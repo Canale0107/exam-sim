@@ -77,7 +77,15 @@ correct = 0
 unknown = 0
 for q in qset.questions:
     a = progress_db.get_attempt(conn, user_id, set_id, q.id)
+    # Treat empty selection as unanswered
+    has_selection = False
     if a and a["selected_choice_ids"] is not None:
+        try:
+            ids = json.loads(a["selected_choice_ids"]) if a["selected_choice_ids"] else []
+            has_selection = bool(ids)
+        except Exception:
+            has_selection = False
+    if a and has_selection:
         answered += 1
         if a["is_correct"] == 1:
             correct += 1
@@ -113,12 +121,24 @@ if attempt:
 choice_labels = [f"{c.id} {c.text}".strip() for c in q.choices]
 choice_ids = [c.id for c in q.choices]
 
-default_idx = 0
-if selected_choice_ids and selected_choice_ids[0] in choice_ids:
-    default_idx = choice_ids.index(selected_choice_ids[0])
+is_multi = bool(q.is_multi_select) if (q.is_multi_select is not None) else bool(
+    (q.answer_choice_ids and len(q.answer_choice_ids) > 1)
+)
 
-picked_label = st.radio("回答を選択（単一選択）", choice_labels, index=default_idx, key=f"radio_{set_id}_{q.id}")
-picked_id = choice_ids[choice_labels.index(picked_label)] if choice_labels else None
+picked_ids: list[str] = []
+if not is_multi:
+    default_idx = 0
+    if selected_choice_ids and selected_choice_ids[0] in choice_ids:
+        default_idx = choice_ids.index(selected_choice_ids[0])
+    picked_label = st.radio("回答を選択（単一選択）", choice_labels, index=default_idx, key=f"radio_{set_id}_{q.id}")
+    picked_id = choice_ids[choice_labels.index(picked_label)] if choice_labels else None
+    picked_ids = [picked_id] if picked_id else []
+else:
+    st.write("回答を選択（複数選択）")
+    for cid, lab in zip(choice_ids, choice_labels):
+        checked = st.checkbox(lab, value=(cid in selected_choice_ids), key=f"chk_{set_id}_{q.id}_{cid}")
+        if checked:
+            picked_ids.append(cid)
 
 meta_cols = st.columns([1, 1, 4])
 flagged_new = meta_cols[0].checkbox("見直しフラグ", value=flagged, key=f"flag_{set_id}_{q.id}")
@@ -128,13 +148,14 @@ btn_cols = st.columns([1, 1, 6])
 if btn_cols[0].button("保存", type="primary"):
     is_correct: int | None = None
     if q.answer_choice_ids:
-        is_correct = 1 if [picked_id] == q.answer_choice_ids else 0
+        # order-insensitive compare for multi-select
+        is_correct = 1 if set(picked_ids) == set(q.answer_choice_ids) else 0
     progress_db.upsert_attempt(
         conn,
         user_id=user_id,
         set_id=set_id,
         question_id=q.id,
-        selected_choice_ids_json=json.dumps([picked_id]),
+        selected_choice_ids_json=json.dumps(picked_ids),
         is_correct=is_correct,
         flagged=bool(flagged_new),
         note=(note_new.strip() or None),

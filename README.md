@@ -86,7 +86,6 @@
 
 ```json
 {
-  "schema_version": 1,
   "set_id": "example-set",
   "title": "Example Exam",
   "questions": [

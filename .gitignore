@@ -8,3 +8,5 @@ __pycache__/
 venv/
 .python-version
 .streamlit/secrets.toml
+local_questions/
+.cursor/

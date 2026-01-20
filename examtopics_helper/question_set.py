@@ -17,13 +17,15 @@ class Question:
     text: str
     choices: list[Choice]
     answer_choice_ids: Optional[list[str]] = None
+    # Explicitly indicates whether the UI should allow multiple selections.
+    # If omitted, the app may infer from answer_choice_ids length / "(Choose two.)" text.
+    is_multi_select: Optional[bool] = None
     explanation: Optional[str] = None
     tags: Optional[list[str]] = None
 
 
 @dataclass(frozen=True)
 class QuestionSet:
-    schema_version: int
     set_id: str
     title: str
     questions: list[Question]
@@ -63,15 +65,17 @@ def _as_optional_str_list(x: Any, *, field: str) -> Optional[list[str]]:
     return out or None
 
 
+def _as_optional_bool(x: Any, *, field: str) -> Optional[bool]:
+    if x is None:
+        return None
+    if not isinstance(x, bool):
+        raise QuestionSetFormatError(f"{field} must be a boolean or null")
+    return x
+
+
 def parse_question_set(obj: Any) -> QuestionSet:
     if not isinstance(obj, dict):
         raise QuestionSetFormatError("root must be an object")
-
-    schema_version = _require(obj, "schema_version")
-    if not isinstance(schema_version, int):
-        raise QuestionSetFormatError("schema_version must be an integer")
-    if schema_version != 1:
-        raise QuestionSetFormatError(f"unsupported schema_version: {schema_version}")
 
     set_id = _as_str(_require(obj, "set_id"), field="set_id")
     title = _as_str(_require(obj, "title"), field="title")
@@ -115,6 +119,8 @@ def parse_question_set(obj: Any) -> QuestionSet:
                     f"questions[{i}].answer_choice_ids contains unknown choice ids: {unknown}"
                 )
 
+        is_multi_select = _as_optional_bool(q.get("is_multi_select"), field=f"questions[{i}].is_multi_select")
+
         explanation = _as_optional_str(q.get("explanation"), field=f"questions[{i}].explanation")
         tags = _as_optional_str_list(q.get("tags"), field=f"questions[{i}].tags")
 
@@ -124,12 +130,13 @@ def parse_question_set(obj: Any) -> QuestionSet:
                 text=qtext,
                 choices=choices,
                 answer_choice_ids=answer_choice_ids,
+                is_multi_select=is_multi_select,
                 explanation=explanation,
                 tags=tags,
             )
         )
 
-    return QuestionSet(schema_version=schema_version, set_id=set_id, title=title, questions=questions)
+    return QuestionSet(set_id=set_id, title=title, questions=questions)
 
 
 def load_question_set_json_bytes(data: bytes) -> QuestionSet:

@@ -1,5 +1,4 @@
 {
-  "schema_version": 1,
   "set_id": "sample-set",
   "title": "Sample Exam",
   "questions": [
@@ -12,6 +11,7 @@
         { "id": "C", "text": "5" }
       ],
       "answer_choice_ids": ["B"],
+      "is_multi_select": false,
       "explanation": "2 + 2 = 4",
       "tags": ["math", "warmup"]
     },
@@ -23,8 +23,23 @@
         { "id": "B", "text": "Option B" }
       ],
       "answer_choice_ids": null,
+      "is_multi_select": false,
       "explanation": null,
       "tags": ["no-answer"]
+    },
+    {
+      "id": "q3",
+      "text": "Which of the following are prime numbers? (Choose two.)",
+      "choices": [
+        { "id": "A", "text": "2" },
+        { "id": "B", "text": "4" },
+        { "id": "C", "text": "3" },
+        { "id": "D", "text": "6" }
+      ],
+      "answer_choice_ids": ["A", "C"],
+      "is_multi_select": true,
+      "explanation": "2 and 3 are prime numbers.",
+      "tags": ["math", "multi-select"]
     }
   ]
 }
