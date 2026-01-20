@@ -1,0 +1,13 @@
+[project]
+name = "exam-sim"
+version = "0.1.0"
+description = "BYOS exam simulator UI + progress tracker"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4==4.12.3",
+    "lxml==5.3.0",
+    "requests==2.32.3",
+    "streamlit==1.41.1",
+    "tqdm==4.66.6",
+]
