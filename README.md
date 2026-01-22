@@ -75,8 +75,8 @@
 
 現時点は “将来のBYOS Webアプリ” へ移行しやすいように、まずローカルで以下を分離しています。
 
-- `app.py`: **模試アプリ**（問題セットJSONを読み込み、進捗だけ `progress.sqlite3` に保存）
-- `apps/scraper_app.py`: **スクレイピング系ツール（ローカル）**（模試アプリから分離）
+- `web/`: **Webアプリ（Next.js）**（問題セットJSONを読み込み、進捗はブラウザに保存）
+- `examtopics_helper/`: **スクレイピング/変換ツール（CLI / ローカル専用）**
 
 ## 問題セットJSON形式（v1）
 
@@ -124,14 +124,6 @@ uv sync
 
 ## 起動
 
-### 模試アプリ（BYOS / JSON）
-
-```bash
-uv run streamlit run app.py
-```
-
-サンプルで起動する場合は、サイドバーで `examples/questions.sample.json` を指定してください。
-
 ### Webアプリ（Next.js / BYOS / ローカル進捗）
 
 `web/` 配下に Next.js 版の学習UI（MVP）があります。
@@ -147,15 +139,9 @@ npm run dev
 
 起動後、画面左の「サンプルを読み込む」またはJSONアップロードで学習を開始できます。
 
-### スクレイピング系ツール（ローカル）
-
-```bash
-uv run streamlit run apps/scraper_app.py
-```
-
 ### スクレイピングツール（CLI / ローカル）
 
-Streamlit UI の代わりに、ローカル専用のCLIも用意しています（公開Web運用で問題本文を収集・配信する用途には使わないでください）。
+ローカル専用のCLIです（公開Web運用で問題本文を収集・配信する用途には使わないでください）。
 
 URL収集（ディスカッション一覧ページ → URLリスト）:
 
