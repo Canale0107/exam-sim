@@ -153,6 +153,30 @@ npm run dev
 uv run streamlit run apps/scraper_app.py
 ```
 
+### スクレイピングツール（CLI / ローカル）
+
+Streamlit UI の代わりに、ローカル専用のCLIも用意しています（公開Web運用で問題本文を収集・配信する用途には使わないでください）。
+
+URL収集（ディスカッション一覧ページ → URLリスト）:
+
+```bash
+uv run python -m examtopics_helper.cli collect-urls \
+  --category amazon/ \
+  --max-page 575 \
+  --keyword SAP-C02 \
+  --out urls.txt
+```
+
+スクレイプ（URLリスト → questions.json）:
+
+```bash
+uv run python -m examtopics_helper.cli scrape \
+  --set-id AWS-SAP-C02 \
+  --urls urls.txt \
+  --out AWS-SAP-C02.questions.json \
+  --cache scrape-cache.json
+```
+
 ## 今後の実装ステップ（MVP優先順位）
 
 1. Webアプリ（試験UI + 進捗同期）を先に完成

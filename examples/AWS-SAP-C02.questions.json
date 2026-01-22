@@ -1,0 +1,150 @@
+{
+  "set_id": "AWS-SAP-C02",
+  "questions": [
+    {
+      "id": "et-4ba51ba0c3-q1",
+      "text": "A company is rearchitecting its applications to run on AWS. The company’s infrastructure includes multiple Amazon EC2 instances. The company's development team needs different levels of access. The company wants to implement a policy that requires all Windows EC2 instances to be joined to an Active Directory domain on AWS. The company also wants to implement enhanced security processes such as multi-factor authentication (MFA). The company wants to use managed AWS services wherever possible. Which solution will meet these requirements?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Create an AWS Directory Service for Microsoft Active Directory implementation. Launch an Amazon Workspace. Connect to and use the Workspace for domain security configuration tasks."
+        },
+        {
+          "id": "B",
+          "text": "Create an AWS Directory Service for Microsoft Active Directory implementation. Launch an EC2 instance. Connect to and use the EC2 instance for domain security configuration tasks."
+        },
+        {
+          "id": "C",
+          "text": "Create an AWS Directory Service Simple AD implementation. Launch an EC2 instance. Connect to and use the EC2 instance for domain security configuration tasks."
+        },
+        {
+          "id": "D",
+          "text": "Create an AWS Directory Service Simple AD implementation. Launch an Amazon Workspace. Connect to and use the Workspace for domain security configuration tasks."
+        }
+      ],
+      "answer_choice_ids": [
+        "B"
+      ],
+      "is_multi_select": false,
+      "explanation": "Top voted (13 votes)\n\n2 years, 1 month ago\nSelected Answer: B\n\nI support B as well per this link where EC2 is recommended:\nhttps://docs.aws.amazon.com/workspaces/latest/adminguide/directory_administration.html",
+      "tags": null
+    },
+    {
+      "id": "et-0e4adb9008-q1",
+      "text": "A company implements a containerized application by using Amazon Elastic Container Service (Amazon ECS) and Amazon API Gateway The application data is stored in Amazon Aurora databases and Amazon DynamoDB databases. The company automates infrastructure provisioning by using AWS CloudFormation. The company automates application deployment by using AWS CodePipeline. A solutions architect needs to implement a disaster recovery (DR) strategy that meets an RPO of 2 hours and an RTO of 4 hours. Which solution will meet these requirements MOST cost-effectively?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Set up an Aurora global database and DynamoDB global tables to replicate the databases to a secondary AWS Region. In the primary Region and in the secondary Region, configure an API Gateway API with a Regional endpoint. Implement Amazon CloudFront with origin failover to route traffic to the secondary Region during a DR scenario."
+        },
+        {
+          "id": "B",
+          "text": "Use AWS Database Migration Service (AWS DMS), Amazon EventBridge, and AWS Lambda to replicate the Aurora databases to a secondary AWS Region. Use DynamoDB Streams, EventBridge. and Lambda to replicate the DynamoDB databases to the secondary Region. In the primary Region and in the secondary Region, configure an API Gateway API with a Regional endpoint. Implement Amazon Route 53 failover routing to switch traffic from the primary Region to the secondary Region."
+        },
+        {
+          "id": "C",
+          "text": "Use AWS Backup to create backups of the Aurora databases and the DynamoDB databases in a secondary AWS Region. In the primary Region and in the secondary Region, configure an API Gateway API with a Regional endpoint. Implement Amazon Route 53 failover routing to switch traffic from the primary Region to the secondary Region."
+        },
+        {
+          "id": "D",
+          "text": "Set up an Aurora global database and DynamoDB global tables to replicate the databases to a secondary AWS Region. In the primary Region and in the secondary Region, configure an API Gateway API with a Regional endpoint. Implement Amazon Route 53 failover routing to switch traffic from the primary Region to the secondary Region."
+        }
+      ],
+      "answer_choice_ids": [
+        "D"
+      ],
+      "is_multi_select": false,
+      "explanation": "Top voted (27 votes)\n\nauthor: finesse_999\n2 years, 5 months ago\n\n2 years, 5 months ago I think the key here is to focus on the requirements. It is clearly stated that the requirement is that the strategy meet an RPO of 2 hours and an RTO of 4 hours. Even though option C is the most cost-effective, it is contingent on a few external factors, like the size of the data, the data change rate, etc., which cannot be assumed at the risk of breaching RPO and RTO requirements. So based on that, the most effective option is D.",
+      "tags": null
+    },
+    {
+      "id": "et-3c053666f0-q1",
+      "text": "A company has deployed its database on an Amazon RDS for MySQL DB instance in the us-east-1 Region. The company needs to make its data available to customers in Europe. The customers in Europe must have access to the same data as customers in the United States (US) and will not tolerate high application latency or stale data. The customers in Europe and the customers in the US need to write to the database. Both groups of customers need to see updates from the other group in real time. Which solution will meet these requirements?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Create an Amazon Aurora MySQL replica of the RDS for MySQL DB instance. Pause application writes to the RDS DB instance. Promote the Aurora Replica to a standalone DB cluster. Reconfigure the application to use the Aurora database and resume writes. Add eu-west-1 as a secondary Region to the DB cluster. Enable write forwarding on the DB cluster. Deploy the application in eu-west-1. Configure the application to use the Aurora MySQL endpoint in eu-west-1."
+        },
+        {
+          "id": "B",
+          "text": "Add a cross-Region replica in eu-west-1 for the RDS for MySQL DB instance. Configure the replica to replicate write queries back to the primary DB instance. Deploy the application in eu-west-1. Configure the application to use the RDS for MySQL endpoint in eu-west-1."
+        },
+        {
+          "id": "C",
+          "text": "Copy the most recent snapshot from the RDS for MySQL DB instance to eu-west-1. Create a new RDS for MySQL DB instance in eu-west-1 from the snapshot. Configure MySQL logical replication from us-east-1 to eu-west-1. Enable write forwarding on the DB cluster. Deploy the application in eu-wes&1. Configure the application to use the RDS for MySQL endpoint in eu-west-1."
+        },
+        {
+          "id": "D",
+          "text": "Convert the RDS for MySQL DB instance to an Amazon Aurora MySQL DB cluster. Add eu-west-1 as a secondary Region to the DB cluster. Enable write forwarding on the DB cluster. Deploy the application in eu-west-1. Configure the application to use the Aurora MySQL endpoint in eu-west-1."
+        }
+      ],
+      "answer_choice_ids": [
+        "A"
+      ],
+      "is_multi_select": false,
+      "explanation": "Top voted (25 votes)\n\n2 years, 6 months ago\n\nggrodskiy  2 years, 6 months ago Correct D.\nYou cannot convert RDS MySQL to Aurora MySQL natively, but you can create an Aurora read replica of the RDS MySQL DB instance and then promote it to a standalone Aurora MySQL DB clusterhttps://aws.amazon.com/getting-started/hands-on/migrate-rdsmysql-to-auroramysql/https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraMySQL.Migrating.RDSMySQL.html. This is the first step of option A in the question. However, this option also requires pausing application writes and reconfiguring the application, which can cause downtime and data inconsistency. Therefore, option A is not the best solution for the given requirements. Option D is still the correct answer because it does not require pausing writes or reconfiguring the application, and it enables cross-Region replication and write forwarding for the database.",
+      "tags": null
+    },
+    {
+      "id": "et-fce874b7e4-q1",
+      "text": "A company runs an IoT platform on AWS. IoT sensors in various locations send data to the company’s Node.js API servers on Amazon EC2 instances running behind an Application Load Balancer. The data is stored in an Amazon RDS MySQL DB instance that uses a 4 TB General Purpose SSD volume. The number of sensors the company has deployed in the field has increased over time, and is expected to grow significantly. The API servers are consistently overloaded and RDS metrics show high write latency. Which of the following steps together will resolve the issues permanently and enable growth as new sensors are provisioned, while keeping this platform cost-efficient? (Choose two.)",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Resize the MySQL General Purpose SSD storage to 6 TB to improve the volume’s IOPS."
+        },
+        {
+          "id": "B",
+          "text": "Re-architect the database tier to use Amazon Aurora instead of an RDS MySQL DB instance and add read replicas."
+        },
+        {
+          "id": "C",
+          "text": "Leverage Amazon Kinesis Data Streams and AWS Lambda to ingest and process the raw data."
+        },
+        {
+          "id": "D",
+          "text": "Use AWS X-Ray to analyze and debug application issues and add more API servers to match the load."
+        },
+        {
+          "id": "E",
+          "text": "Re-architect the database tier to use Amazon DynamoDB instead of an RDS MySQL DB instance."
+        }
+      ],
+      "answer_choice_ids": [
+        "C",
+        "E"
+      ],
+      "is_multi_select": true,
+      "explanation": "Top voted (21 votes)\n\n3 years ago\nSelected Answer: CE\n\nC and E are the correct answers.\n\nOption C: Leveraging Amazon Kinesis Data Streams and AWS Lambda to ingest and process the raw data would help to resolve the issues with the API servers being consistently overloaded. By using Kinesis, the data can be ingested and processed in real-time, allowing the API servers to handle the increased load. Using Lambda to process the data can also help to improve the overall performance and scalability of the platform.\n\nOption E: Re-architecting the database tier to use Amazon DynamoDB instead of an RDS MySQL DB instance would help to resolve the issues with high write latency. DynamoDB is a NoSQL database that is designed for high performance and scalability, making it a good fit for this use case. Additionally, DynamoDB supports auto-scaling, which can help to ensure that the database can handle the expected growth in the number of sensors.",
+      "tags": null
+    },
+    {
+      "id": "et-3dbb935e7d-q1",
+      "text": "A company runs a customer service center that accepts calls and automatically sends all customers a managed, interactive, two-way experience survey by text message. The applications that support the customer service center run on machines that the company hosts in an on-premises data center. The hardware that the company uses is old, and the company is experiencing downtime with the system. The company wants to migrate the system to AWS to improve reliability. Which solution will meet these requirements with the LEAST ongoing operational overhead?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Use Amazon Connect to replace the old call center hardware. Use Amazon Pinpoint to send text message surveys to customers."
+        },
+        {
+          "id": "B",
+          "text": "Use Amazon Connect to replace the old call center hardware. Use Amazon Simple Notification Service (Amazon SNS) to send text message surveys to customers."
+        },
+        {
+          "id": "C",
+          "text": "Migrate the call center software to Amazon EC2 instances that are in an Auto Scaling group. Use the EC2 instances to send text message surveys to customers."
+        },
+        {
+          "id": "D",
+          "text": "Use Amazon Pinpoint to replace the old call center hardware and to send text message surveys to customers."
+        }
+      ],
+      "answer_choice_ids": [
+        "A"
+      ],
+      "is_multi_select": false,
+      "explanation": "Top voted (13 votes)\n\n2 years, 4 months ago\nSelected Answer: A\n\nAmazon Connect is a cloud-based contact center service that allows you to set up a virtual call center for your business. It provides an easy-to-use interface for managing customer interactions through voice and chat. Amazon Connect integrates with other AWS services, such as Amazon S3 and Amazon Kinesis, to help you collect, store, and analyze customer data for insights into customer behavior and trends.\n\nOn the other hand, Amazon Pinpoint is a marketing automation and analytics service that allows you to engage with your customers across different channels, such as email, SMS, push notifications, and voice. It helps you create personalized campaigns based on user behavior and enables you to track user engagement and retention.\n\nWhile both services allow you to communicate with your customers, they serve different purposes. Amazon Connect is focused on customer support and service, while Amazon Pinpoint is focused on marketing and engagement.",
+      "tags": null
+    }
+  ]
+}

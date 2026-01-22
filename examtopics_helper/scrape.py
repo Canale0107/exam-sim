@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -19,24 +17,6 @@ from .http import FetchConfig, polite_get
 @dataclass(frozen=True)
 class CollectUrlsConfig:
     max_workers: int = 10
-
-
-def _agent_log(message: str, data: dict, hypothesis_id: str):
-    try:
-        Path("/Users/canale/Projects/exam-sim/.cursor").mkdir(parents=True, exist_ok=True)
-        payload = {
-            "sessionId": "debug-session",
-            "runId": "scrape-fix",
-            "hypothesisId": hypothesis_id,
-            "location": "examtopics_helper/scrape.py",
-            "message": message,
-            "data": data,
-            "timestamp": int(time.time() * 1000),
-        }
-        with open("/Users/canale/Projects/exam-sim/.cursor/debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
 
 
 def normalize_discussion_url(base_url: str, href: str) -> str:
@@ -317,18 +297,6 @@ def parse_discussion_page(html: str) -> ParsedQuestion:
 
     q_text = _strip_suggested_answer_ui(q_text_raw)
     q_text = _strip_inline_choices_from_text(q_text)
-    # #region agent log
-    _agent_log(
-        "parse_discussion_page extracted",
-        {
-            "q_text_raw_tail": (q_text_raw[-140:] if q_text_raw else None),
-            "q_text_clean_tail": (q_text[-140:] if q_text else None),
-            "extracted_labels": extracted_labels,
-            "has_explanation": bool(explanation),
-        },
-        "H2",
-    )
-    # #endregion agent log
 
     choices: list[tuple[Optional[str], str, bool]] = []
     for idx, li in enumerate(choice_els, start=1):

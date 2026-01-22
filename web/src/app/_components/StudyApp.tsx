@@ -144,7 +144,7 @@ export function StudyApp() {
 
   async function loadSample() {
     try {
-      const res = await fetch("/examples/questions.sample.json", { cache: "no-store" });
+      const res = await fetch("/examples/sample.questions.json", { cache: "no-store" });
       if (!res.ok) throw new Error(`failed to fetch sample: ${res.status}`);
       const text = await res.text();
       const loaded = loadQuestionSetFromJsonText(text);

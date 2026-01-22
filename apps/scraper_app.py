@@ -9,55 +9,15 @@ import json
 import os
 import re
 import sys
-import time
 from pathlib import Path
 
 import streamlit as st
-
-# #region agent log
-def _agent_log(message: str, data: dict, hypothesis_id: str):
-    try:
-        Path("/Users/canale/Projects/exam-sim/.cursor").mkdir(parents=True, exist_ok=True)
-        payload = {
-            "sessionId": "debug-session",
-            "runId": "pre-fix",
-            "hypothesisId": hypothesis_id,
-            "location": "apps/scraper_app.py:import",
-            "message": message,
-            "data": data,
-            "timestamp": int(time.time() * 1000),
-        }
-        with open("/Users/canale/Projects/exam-sim/.cursor/debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-
-
-_agent_log(
-    "startup import context",
-    {
-        "cwd": os.getcwd(),
-        "file": __file__,
-        "sys_executable": sys.executable,
-        "sys_version": sys.version,
-        "sys_path_head": sys.path[:8],
-    },
-    "H1",
-)
 
 # Streamlit executes this script with `apps/` on sys.path, but not the repo root.
 # Ensure the repo root is importable so `examtopics_helper` can be resolved.
 _repo_root = str(Path(__file__).resolve().parents[1])
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
-    # #region agent log
-    _agent_log(
-        "injected repo root into sys.path",
-        {"repo_root": _repo_root, "sys_path_head": sys.path[:8]},
-        "H1",
-    )
-    # #endregion agent log
-# #endregion agent log
 
 try:
     from examtopics_helper.db import ParsedQuestion
@@ -66,32 +26,7 @@ try:
         collect_discussion_urls_from_list_pages,
         fetch_and_parse_discussion,
     )
-    # #region agent log
-    _agent_log(
-        "import examtopics_helper ok",
-        {
-            "parsed_question_file": getattr(sys.modules.get("examtopics_helper.db"), "__file__", None),
-            "sys_path_head": sys.path[:8],
-        },
-        "H1",
-    )
-    # #endregion agent log
 except Exception as e:
-    # #region agent log
-    _agent_log(
-        "import examtopics_helper failed",
-        {
-            "error_type": type(e).__name__,
-            "error": str(e),
-            "cwd": os.getcwd(),
-            "file": __file__,
-            "root_guess": str(Path(__file__).resolve().parents[1]),
-            "root_exists": Path(__file__).resolve().parents[1].exists(),
-            "sys_path_head": sys.path[:12],
-        },
-        "H1",
-    )
-    # #endregion agent log
     raise
 
 st.set_page_config(page_title="scraper (local)", layout="wide")
