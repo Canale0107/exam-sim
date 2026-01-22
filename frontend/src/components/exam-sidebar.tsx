@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StatsCard } from "@/components/stats-card";
 import type { QuestionSet } from "@/lib/questionSet";
@@ -42,7 +41,8 @@ export function ExamSidebar({
   const incorrectAnswers = Object.values(progress.attemptsByQuestionId).filter(
     (a) => a?.isCorrect === false
   ).length;
-  const accuracyRate = answeredQuestions > 0 ? Math.round((correctAnswers / answeredQuestions) * 100) : 0;
+  const gradedAnswers = correctAnswers + incorrectAnswers;
+  const accuracyRate = gradedAnswers > 0 ? Math.round((correctAnswers / gradedAnswers) * 100) : 0;
 
   return (
     <div className="flex h-full flex-col bg-sidebar">

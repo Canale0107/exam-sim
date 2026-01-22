@@ -9,6 +9,7 @@ import { clearProgress, emptyProgressState, loadProgress, saveProgress } from "@
 import { QuestionSetSelector } from "@/components/question-set-selector";
 import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
+import { ResultsScreen } from "@/app/_components/ResultsScreen";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChevronLeftIcon, ChevronRightIcon, SkipForwardIcon } from "@/components/icons";
@@ -78,13 +79,14 @@ function upsertAttempt(
 export function StudyApp() {
   const [userId, setUserId] = useState<string>("local");
   const [qset, setQset] = useState<QuestionSet | null>(null);
-  const [qsetError, setQsetError] = useState<string | null>(null);
 
   const [progress, setProgress] = useState<ProgressState>(emptyProgressState());
+  const [view, setView] = useState<"exam" | "results">("exam");
 
   // Restore userId + last loaded set (session only)
   useEffect(() => {
     const savedUser = window.sessionStorage.getItem(SESSION_USER_ID_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (savedUser && savedUser.trim()) setUserId(savedUser.trim());
 
     const savedJson = window.sessionStorage.getItem(SESSION_LAST_QSET_JSON_KEY);
@@ -92,10 +94,10 @@ export function StudyApp() {
       try {
         const loaded = loadQuestionSetFromJsonText(savedJson);
         setQset(loaded);
-        setQsetError(null);
-      } catch (e) {
+      } catch {
+        // If we can't restore, clear the session to avoid failing every reload.
+        window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
         setQset(null);
-        setQsetError(e instanceof Error ? e.message : String(e));
       }
     }
   }, []);
@@ -108,7 +110,9 @@ export function StudyApp() {
   useEffect(() => {
     if (!qset) return;
     const loaded = loadProgress({ userId, setId: qset.set_id });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProgress(normalizeProgressForSet(qset, loaded));
+    setView("exam");
   }, [userId, qset?.set_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist progress
@@ -123,48 +127,15 @@ export function StudyApp() {
     return { index: idx, question: qset.questions[idx] };
   }, [qset, progress.currentIndex]);
 
-  async function loadSample() {
-    try {
-      const res = await fetch("/examples/questions.sample.json", { cache: "no-store" });
-      if (!res.ok) throw new Error(`failed to fetch sample: ${res.status}`);
-      const text = await res.text();
-      const loaded = loadQuestionSetFromJsonText(text);
-      window.sessionStorage.setItem(SESSION_LAST_QSET_JSON_KEY, text);
-      setQset(loaded);
-      setQsetError(null);
-    } catch (e) {
-      setQset(null);
-      setQsetError(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  function onUploadFile(file: File) {
-    const reader = new FileReader();
-    reader.onerror = () => setQsetError("failed to read file");
-    reader.onload = () => {
-      try {
-        const text = String(reader.result ?? "");
-        const loaded = loadQuestionSetFromJsonText(text);
-        window.sessionStorage.setItem(SESSION_LAST_QSET_JSON_KEY, text);
-        setQset(loaded);
-        setQsetError(null);
-      } catch (e) {
-        setQset(null);
-        setQsetError(e instanceof Error ? e.message : String(e));
-      }
-    };
-    reader.readAsText(file);
-  }
-
   function handleSetSelected(set: QuestionSet) {
     window.sessionStorage.setItem(SESSION_LAST_QSET_JSON_KEY, JSON.stringify(set));
     setQset(set);
-    setQsetError(null);
   }
 
   function gotoIndex(nextIndex: number) {
     if (!qset) return;
     setProgress((prev) => ({ ...prev, currentIndex: clamp(nextIndex, 0, qset.questions.length - 1) }));
+    setView("exam");
   }
 
   function gotoFirstUnanswered() {
@@ -224,6 +195,7 @@ export function StudyApp() {
       window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
       setQset(null);
       setProgress(emptyProgressState());
+      setView("exam");
     }
   }
 
@@ -240,6 +212,30 @@ export function StudyApp() {
   }
 
   const currentAttempt = progress.attemptsByQuestionId[current.question.id];
+
+  const totalQuestions = qset.questions.length;
+  const answeredQuestions = Object.keys(progress.attemptsByQuestionId).filter((qId) =>
+    hasAnswered(progress.attemptsByQuestionId[qId])
+  ).length;
+  const correctAnswers = Object.values(progress.attemptsByQuestionId).filter((a) => a?.isCorrect === true).length;
+  const incorrectAnswers = Object.values(progress.attemptsByQuestionId).filter((a) => a?.isCorrect === false).length;
+  const unknownAnswers = Math.max(0, answeredQuestions - correctAnswers - incorrectAnswers);
+  const unansweredQuestions = Math.max(0, totalQuestions - answeredQuestions);
+  const gradedAnswers = correctAnswers + incorrectAnswers;
+  const accuracyRate = gradedAnswers > 0 ? Math.round((correctAnswers / gradedAnswers) * 100) : 0;
+
+  const isLastQuestion = current.index >= totalQuestions - 1;
+
+  function onFinish() {
+    if (!qset) return;
+    if (unansweredQuestions > 0) {
+      const ok = confirm(
+        `未回答が ${unansweredQuestions} 問あります。解答を終了して結果を表示しますか？`
+      );
+      if (!ok) return;
+    }
+    setView("results");
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -259,63 +255,80 @@ export function StudyApp() {
       <main className="flex flex-1 flex-col overflow-hidden">
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-6 py-8">
-            <QuestionDisplay
-              key={current.question.id}
-              question={current.question}
-              questionNumber={current.index + 1}
-              totalQuestions={qset.questions.length}
-              attempt={currentAttempt}
-              onAnswerSubmit={onAnswer}
-              onFlagToggle={onToggleFlagged}
-              onNoteChange={onChangeNote}
-              onResetAnswer={onResetToUnanswered}
+          {view === "exam" ? (
+            <div className="mx-auto max-w-3xl px-6 py-8">
+              <QuestionDisplay
+                key={current.question.id}
+                question={current.question}
+                questionNumber={current.index + 1}
+                totalQuestions={qset.questions.length}
+                attempt={currentAttempt}
+                onAnswerSubmit={onAnswer}
+                onFlagToggle={onToggleFlagged}
+                onNoteChange={onChangeNote}
+                onResetAnswer={onResetToUnanswered}
+              />
+            </div>
+          ) : (
+            <ResultsScreen
+              title={qset.title}
+              totalQuestions={totalQuestions}
+              answeredQuestions={answeredQuestions}
+              correctAnswers={correctAnswers}
+              incorrectAnswers={incorrectAnswers}
+              unknownAnswers={unknownAnswers}
+              unansweredQuestions={unansweredQuestions}
+              accuracyRate={accuracyRate}
+              onBackToExam={() => setView("exam")}
+              onBackToHome={onBackToHome}
             />
-          </div>
+          )}
         </div>
 
         {/* Navigation Bar */}
-        <div className="border-t border-border bg-card p-4">
-          <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
-            <Button
-              variant="outline"
-              onClick={() => gotoIndex(current.index - 1)}
-              disabled={current.index === 0}
-            >
-              <ChevronLeftIcon className="mr-2 h-4 w-4" />
-              前の問題
-            </Button>
+        {view === "exam" && (
+          <div className="border-t border-border bg-card p-4">
+            <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+              <Button
+                variant="outline"
+                onClick={() => gotoIndex(current.index - 1)}
+                disabled={current.index === 0}
+              >
+                <ChevronLeftIcon className="mr-2 h-4 w-4" />
+                前の問題
+              </Button>
 
-            <Button variant="outline" onClick={gotoFirstUnanswered}>
-              <SkipForwardIcon className="mr-2 h-4 w-4" />
-              未回答へ
-            </Button>
+              <Button variant="outline" onClick={gotoFirstUnanswered}>
+                <SkipForwardIcon className="mr-2 h-4 w-4" />
+                未回答へ
+              </Button>
 
-            <Button
-              onClick={() => gotoIndex(current.index + 1)}
-              disabled={!qset || current.index >= qset.questions.length - 1}
-            >
-              次の問題
-              <ChevronRightIcon className="ml-2 h-4 w-4" />
-            </Button>
+              {isLastQuestion ? (
+                <Button onClick={onFinish}>解答を終了する</Button>
+              ) : (
+                <Button onClick={() => gotoIndex(current.index + 1)}>
+                  次の問題
+                  <ChevronRightIcon className="ml-2 h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Mobile Stats (visible only on small screens) */}
-      <div className="lg:hidden">
-        <Card className="fixed bottom-20 right-4 p-4 shadow-lg">
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">進捗</p>
-            <p className="text-lg font-semibold">
-              {Object.keys(progress.attemptsByQuestionId).filter(
-                (qId) => hasAnswered(progress.attemptsByQuestionId[qId])
-              ).length}
-              /{qset.questions.length}
-            </p>
-          </div>
-        </Card>
-      </div>
+      {view === "exam" && (
+        <div className="lg:hidden">
+          <Card className="fixed bottom-20 right-4 p-4 shadow-lg">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">進捗</p>
+              <p className="text-lg font-semibold">
+                {answeredQuestions}/{qset.questions.length}
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
