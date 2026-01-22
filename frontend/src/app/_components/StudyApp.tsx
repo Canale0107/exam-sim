@@ -11,7 +11,6 @@ import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
 import { ResultsScreen } from "@/app/_components/ResultsScreen";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ChevronLeftIcon, ChevronRightIcon, SkipForwardIcon } from "@/components/icons";
 
 const SESSION_USER_ID_KEY = "exam-sim:userId";
@@ -263,6 +262,10 @@ export function StudyApp() {
                 questionNumber={current.index + 1}
                 totalQuestions={qset.questions.length}
                 answeredQuestions={answeredQuestions}
+                correctAnswers={correctAnswers}
+                incorrectAnswers={incorrectAnswers}
+                unknownAnswers={unknownAnswers}
+                accuracyRate={accuracyRate}
                 attempt={currentAttempt}
                 onAnswerSubmit={onAnswer}
                 onFlagToggle={onToggleFlagged}
@@ -317,19 +320,6 @@ export function StudyApp() {
         )}
       </main>
 
-      {/* Mobile Stats (visible only on small screens) */}
-      {view === "exam" && (
-        <div className="lg:hidden">
-          <Card className="fixed bottom-20 right-4 p-4 shadow-lg">
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">進捗</p>
-              <p className="text-lg font-semibold">
-                {answeredQuestions}/{qset.questions.length}
-              </p>
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

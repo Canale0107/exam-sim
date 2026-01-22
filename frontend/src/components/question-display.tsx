@@ -21,6 +21,10 @@ interface QuestionDisplayProps {
   questionNumber: number;
   totalQuestions: number;
   answeredQuestions: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  unknownAnswers: number;
+  accuracyRate: number;
   attempt?: Attempt;
   onAnswerSubmit: (selectedChoiceIds: string[]) => void;
   onFlagToggle: (flagged: boolean) => void;
@@ -33,6 +37,10 @@ export function QuestionDisplay({
   questionNumber,
   totalQuestions,
   answeredQuestions,
+  correctAnswers,
+  incorrectAnswers,
+  unknownAnswers,
+  accuracyRate,
   attempt,
   onAnswerSubmit,
   onFlagToggle,
@@ -107,16 +115,7 @@ export function QuestionDisplay({
       {/* Sticky header (stays visible while scrolling long question text) */}
       <div className="sticky top-0 z-10 -mx-6 border-b border-border bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-              問題 {questionNumber} / {totalQuestions}
-            </span>
-            {isMultiple && (
-              <span className="rounded-md bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
-                複数選択
-              </span>
-            )}
-          </div>
+          <div />
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -139,20 +138,45 @@ export function QuestionDisplay({
         </div>
 
         <div className="mt-3 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>進捗</span>
-            <span>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+              <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="shrink-0 tabular-nums">
               {answeredQuestions}/{totalQuestions}
             </span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>
+              正解 <span className="font-medium text-foreground">{correctAnswers}</span>
+            </span>
+            <span>
+              不正解 <span className="font-medium text-foreground">{incorrectAnswers}</span>
+            </span>
+            {unknownAnswers > 0 && (
+              <span>
+                正誤不明 <span className="font-medium text-foreground">{unknownAnswers}</span>
+              </span>
+            )}
+            <span>
+              正答率 <span className="font-medium text-foreground">{accuracyRate}%</span>
+            </span>
           </div>
         </div>
       </div>
 
       {/* Question text */}
       <div>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+            問題 {questionNumber}
+          </span>
+          {isMultiple && (
+            <span className="rounded-md bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+              複数選択
+            </span>
+          )}
+        </div>
           {/* Note Editor (opened by pencil icon) */}
           {isNoteEditing && (
             <Card className="mb-3 p-4">
