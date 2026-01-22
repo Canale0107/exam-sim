@@ -71,7 +71,9 @@ def normalize_question_dict(q: dict[str, Any]) -> dict[str, Any]:
             labels.append(ch)
 
     # Strip UI tail
-    text_clean = re.sub(r"\s*(Show\s*Suggested\s*Answer|Hide\s*Answer)\b.*$", "", text, flags=re.I).strip()
+    text_clean = re.sub(
+        r"\s*(Show\s*Suggested\s*Answer|Hide\s*Answer)\b.*$", "", text, flags=re.I
+    ).strip()
     if text_clean == text:
         text_clean = re.sub(r"\s*Suggested\s*Answer\s*:.*$", "", text, flags=re.I).strip()
     # Strip inline choices if they were captured into the question text

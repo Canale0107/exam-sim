@@ -95,9 +95,7 @@ def upsert_exam(conn: sqlite3.Connection, name: str) -> int:
     return int(row["id"])
 
 
-def insert_discussion_urls(
-    conn: sqlite3.Connection, exam_id: int, urls: Iterable[str]
-) -> int:
+def insert_discussion_urls(conn: sqlite3.Connection, exam_id: int, urls: Iterable[str]) -> int:
     created_at = utc_now_iso()
     cur = conn.cursor()
     inserted = 0
@@ -140,9 +138,7 @@ class ParsedQuestion:
     q_index: int = 1
 
 
-def upsert_question_with_choices(
-    conn: sqlite3.Connection, discussion_id: int, q: ParsedQuestion
-) -> int:
+def upsert_question_with_choices(conn: sqlite3.Connection, discussion_id: int, q: ParsedQuestion) -> int:
     created_at = utc_now_iso()
     conn.execute(
         """
@@ -198,9 +194,7 @@ def get_choices(conn: sqlite3.Connection, question_id: int) -> list[sqlite3.Row]
 
 
 def get_attempt(conn: sqlite3.Connection, question_id: int) -> Optional[sqlite3.Row]:
-    return conn.execute(
-        "SELECT * FROM attempt WHERE question_id = ?", (question_id,)
-    ).fetchone()
+    return conn.execute("SELECT * FROM attempt WHERE question_id = ?", (question_id,)).fetchone()
 
 
 def set_attempt(conn: sqlite3.Connection, question_id: int, selected_choice_id: int | None) -> None:

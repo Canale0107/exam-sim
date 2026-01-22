@@ -90,7 +90,9 @@ def _cmd_scrape(args: argparse.Namespace) -> int:
             print(f"failed: {url} ({type(e).__name__}: {e})", file=sys.stderr)
 
         if cache_path:
-            cache_path.write_text(json.dumps(scraped_by_url, ensure_ascii=False, indent=2), encoding="utf-8")
+            cache_path.write_text(
+                json.dumps(scraped_by_url, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
 
     # Keep exported order stable: follow URL list order
     questions = [normalize_question_dict(scraped_by_url[u]) for u in urls if u in scraped_by_url]
@@ -104,7 +106,9 @@ def _cmd_scrape(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="exam-sim", description="Local-only scraper/convert CLI (do not host publicly).")
+    p = argparse.ArgumentParser(
+        prog="exam-sim", description="Local-only scraper/convert CLI (do not host publicly)."
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     p_collect = sub.add_parser("collect-urls", help="Collect discussion URLs from list pages.")
@@ -123,7 +127,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_scrape.add_argument("--set-id", required=True, help="set_id for exported JSON")
     p_scrape.add_argument("--urls", required=True, help="path to urls.txt (one per line)")
     p_scrape.add_argument("--out", required=True, help="output JSON path (e.g. AWS-SAP-C02.questions.json)")
-    p_scrape.add_argument("--cache", help="optional cache JSON path to resume (maps url -> question dict)")
+    p_scrape.add_argument(
+        "--cache", help="optional cache JSON path to resume (maps url -> question dict)"
+    )
     p_scrape.add_argument("--no-resume", action="store_true", help="ignore existing cache even if provided")
     p_scrape.add_argument("--overwrite", action="store_true", help="overwrite cached entries")
     p_scrape.add_argument("--user-agent", default=FetchConfig().user_agent)

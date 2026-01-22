@@ -52,7 +52,9 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def get_attempt(conn: sqlite3.Connection, user_id: str, set_id: str, question_id: str) -> Optional[sqlite3.Row]:
+def get_attempt(
+    conn: sqlite3.Connection, user_id: str, set_id: str, question_id: str
+) -> Optional[sqlite3.Row]:
     return conn.execute(
         "SELECT * FROM attempt WHERE user_id = ? AND set_id = ? AND question_id = ?",
         (user_id, set_id, question_id),

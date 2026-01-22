@@ -76,7 +76,7 @@
 現時点は “将来のBYOS Webアプリ” へ移行しやすいように、まずローカルで以下を分離しています。
 
 - `web/`: **Webアプリ（Next.js）**（問題セットJSONを読み込み、進捗はブラウザに保存）
-- `examtopics_helper/`: **スクレイピング/変換ツール（CLI / ローカル専用）**
+- `question_set_tools/`: **スクレイピング/変換ツール（CLI / ローカル専用）**
 
 ## 問題セットJSON形式（v1）
 
@@ -146,7 +146,7 @@ npm run dev
 URL収集（ディスカッション一覧ページ → URLリスト）:
 
 ```bash
-uv run python -m examtopics_helper.cli collect-urls \
+uv run python -m question_set_tools.cli collect-urls \
   --category amazon/ \
   --max-page 575 \
   --keyword SAP-C02 \
@@ -156,7 +156,7 @@ uv run python -m examtopics_helper.cli collect-urls \
 スクレイプ（URLリスト → questions.json）:
 
 ```bash
-uv run python -m examtopics_helper.cli scrape \
+uv run python -m question_set_tools.cli scrape \
   --set-id AWS-SAP-C02 \
   --urls urls.txt \
   --out AWS-SAP-C02.questions.json \

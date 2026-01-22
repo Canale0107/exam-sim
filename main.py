@@ -1,5 +1,5 @@
 def main():
-    print("Hello from examtopics-helper!")
+    print("Hello from exam-sim!")
 
 
 if __name__ == "__main__":

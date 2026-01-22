@@ -284,9 +284,7 @@ def parse_discussion_page(html: str) -> ParsedQuestion:
         or soup.select("li.multi-choice-item")
     )
 
-    explanation_el = soup.select_one(".discussion-container") or soup.select_one(
-        ".discussion"
-    )
+    explanation_el = soup.select_one(".discussion-container") or soup.select_one(".discussion")
     discussion_text = _text_or_none(explanation_el)
     explanation = _format_top_voted_explanation(discussion_text)
 

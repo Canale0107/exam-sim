@@ -112,7 +112,9 @@ def parse_question_set(obj: Any) -> QuestionSet:
             ctext = _as_str(_require(c, "text"), field=f"questions[{i}].choices[{j}].text")
             choices.append(Choice(id=cid, text=ctext))
 
-        answer_choice_ids = _as_optional_str_list(q.get("answer_choice_ids"), field=f"questions[{i}].answer_choice_ids")
+        answer_choice_ids = _as_optional_str_list(
+            q.get("answer_choice_ids"), field=f"questions[{i}].answer_choice_ids"
+        )
         if answer_choice_ids:
             unknown = [cid for cid in answer_choice_ids if cid not in seen_cids]
             if unknown:
@@ -120,7 +122,9 @@ def parse_question_set(obj: Any) -> QuestionSet:
                     f"questions[{i}].answer_choice_ids contains unknown choice ids: {unknown}"
                 )
 
-        is_multi_select = _as_optional_bool(q.get("is_multi_select"), field=f"questions[{i}].is_multi_select")
+        is_multi_select = _as_optional_bool(
+            q.get("is_multi_select"), field=f"questions[{i}].is_multi_select"
+        )
 
         explanation = _as_optional_str(q.get("explanation"), field=f"questions[{i}].explanation")
         tags = _as_optional_str_list(q.get("tags"), field=f"questions[{i}].tags")
