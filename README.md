@@ -132,6 +132,21 @@ uv run streamlit run app.py
 
 サンプルで起動する場合は、サイドバーで `examples/questions.sample.json` を指定してください。
 
+### Webアプリ（Next.js / BYOS / ローカル進捗）
+
+`web/` 配下に Next.js 版の学習UI（MVP）があります。
+
+- 問題セットJSONは **ブラウザで読み込み**（サーバーに保存しません）
+- 進捗は **ブラウザの localStorage** に保存（キー: `set_id + userId`）
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+起動後、画面左の「サンプルを読み込む」またはJSONアップロードで学習を開始できます。
+
 ### スクレイピング系ツール（ローカル）
 
 ```bash
