@@ -262,6 +262,7 @@ export function StudyApp() {
                 question={current.question}
                 questionNumber={current.index + 1}
                 totalQuestions={qset.questions.length}
+                answeredQuestions={answeredQuestions}
                 attempt={currentAttempt}
                 onAnswerSubmit={onAnswer}
                 onFlagToggle={onToggleFlagged}

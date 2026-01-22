@@ -20,6 +20,7 @@ interface QuestionDisplayProps {
   question: Question;
   questionNumber: number;
   totalQuestions: number;
+  answeredQuestions: number;
   attempt?: Attempt;
   onAnswerSubmit: (selectedChoiceIds: string[]) => void;
   onFlagToggle: (flagged: boolean) => void;
@@ -31,6 +32,7 @@ export function QuestionDisplay({
   question,
   questionNumber,
   totalQuestions,
+  answeredQuestions,
   attempt,
   onAnswerSubmit,
   onFlagToggle,
@@ -46,6 +48,8 @@ export function QuestionDisplay({
 
   const isAnswered = (attempt?.selectedChoiceIds?.length ?? 0) > 0;
   const isMultiple = question.is_multi_select ?? Boolean((question.answer_choice_ids?.length ?? 0) > 1);
+  const progressPct =
+    totalQuestions > 0 ? Math.max(0, Math.min(100, (answeredQuestions / totalQuestions) * 100)) : 0;
 
   const handleChoiceClick = (choiceId: string) => {
     if (isAnswered) return;
@@ -100,6 +104,19 @@ export function QuestionDisplay({
 
   return (
     <div className="space-y-6">
+      {/* Progress bar */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>進捗</span>
+          <span>
+            {answeredQuestions}/{totalQuestions}
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
+        </div>
+      </div>
+
       {/* Question Header */}
       <div className="flex items-start justify-between">
         <div className="flex-1">
