@@ -104,23 +104,10 @@ export function QuestionDisplay({
 
   return (
     <div className="space-y-6">
-      {/* Progress bar */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>進捗</span>
-          <span>
-            {answeredQuestions}/{totalQuestions}
-          </span>
-        </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
-        </div>
-      </div>
-
-      {/* Question Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="mb-2 flex items-center gap-2">
+      {/* Sticky header (stays visible while scrolling long question text) */}
+      <div className="sticky top-0 z-10 -mx-6 border-b border-border bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
               問題 {questionNumber} / {totalQuestions}
             </span>
@@ -130,6 +117,42 @@ export function QuestionDisplay({
               </span>
             )}
           </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onFlagToggle(!attempt?.flagged)}
+              className={attempt?.flagged ? "text-warning" : ""}
+            >
+              <FlagIcon className={`h-5 w-5 ${attempt?.flagged ? "fill-current" : ""}`} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={openNoteEditor}
+              className={hasSavedNote ? "text-primary" : "text-muted-foreground"}
+              aria-label="メモを編集"
+            >
+              <PencilIcon className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>進捗</span>
+            <span>
+              {answeredQuestions}/{totalQuestions}
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Question text */}
+      <div>
           {/* Note Editor (opened by pencil icon) */}
           {isNoteEditing && (
             <Card className="mb-3 p-4">
@@ -164,26 +187,6 @@ export function QuestionDisplay({
             </Card>
           )}
           <h2 className="whitespace-pre-wrap text-lg font-medium leading-relaxed">{question.text}</h2>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onFlagToggle(!attempt?.flagged)}
-            className={attempt?.flagged ? "text-warning" : ""}
-          >
-            <FlagIcon className={`h-5 w-5 ${attempt?.flagged ? "fill-current" : ""}`} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={openNoteEditor}
-            className={hasSavedNote ? "text-primary" : "text-muted-foreground"}
-            aria-label="メモを編集"
-          >
-            <PencilIcon className="h-5 w-5" />
-          </Button>
-        </div>
       </div>
 
       {/* Choices */}
