@@ -6,8 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Question } from "@/lib/questionSet";
 import type { Attempt } from "@/lib/progress";
-import { CheckCircle2Icon, XCircleIcon, ChevronDownIcon, ChevronUpIcon, FlagIcon } from "@/components/icons";
-import { useState, useEffect } from "react";
+import {
+  CheckCircle2Icon,
+  XCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  FlagIcon,
+  PencilIcon,
+} from "@/components/icons";
+import { useState } from "react";
 
 interface QuestionDisplayProps {
   question: Question;
@@ -34,12 +41,10 @@ export function QuestionDisplay({
     attempt?.selectedChoiceIds ?? []
   );
   const [showExplanation, setShowExplanation] = useState(false);
+  const [isNoteEditing, setIsNoteEditing] = useState(false);
+  const [noteDraft, setNoteDraft] = useState<string>("");
 
-  useEffect(() => {
-    setSelectedChoiceIds(attempt?.selectedChoiceIds ?? []);
-  }, [attempt?.selectedChoiceIds]);
-
-  const isAnswered = attempt?.selectedChoiceIds && attempt.selectedChoiceIds.length > 0;
+  const isAnswered = (attempt?.selectedChoiceIds?.length ?? 0) > 0;
   const isMultiple = question.is_multi_select ?? Boolean((question.answer_choice_ids?.length ?? 0) > 1);
 
   const handleChoiceClick = (choiceId: string) => {
@@ -59,6 +64,11 @@ export function QuestionDisplay({
     onAnswerSubmit(selectedChoiceIds);
   };
 
+  const handleReset = () => {
+    setSelectedChoiceIds([]);
+    onResetAnswer();
+  };
+
   const getChoiceStatus = (choiceId: string) => {
     if (!isAnswered || !question.answer_choice_ids) return "default";
 
@@ -69,6 +79,23 @@ export function QuestionDisplay({
     if (isCorrect) return "correct";
     if (isSelected && !isCorrect) return "incorrect";
     return "default";
+  };
+
+  const hasSavedNote = Boolean(attempt?.note && attempt.note.trim());
+
+  const openNoteEditor = () => {
+    setNoteDraft(attempt?.note ?? "");
+    setIsNoteEditing(true);
+  };
+
+  const saveNote = () => {
+    onNoteChange(noteDraft);
+    setIsNoteEditing(false);
+  };
+
+  const cancelNote = () => {
+    setIsNoteEditing(false);
+    setNoteDraft("");
   };
 
   return (
@@ -86,16 +113,60 @@ export function QuestionDisplay({
               </span>
             )}
           </div>
+          {/* Note Editor (opened by pencil icon) */}
+          {isNoteEditing && (
+            <Card className="mb-3 p-4">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <Label htmlFor="note" className="block text-sm font-medium">
+                  メモ
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={cancelNote}>
+                    キャンセル
+                  </Button>
+                  <Button size="sm" onClick={saveNote}>
+                    保存
+                  </Button>
+                </div>
+              </div>
+              <Textarea
+                id="note"
+                placeholder="メモを入力..."
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    saveNote();
+                  }
+                }}
+                rows={4}
+                autoFocus
+              />
+              <p className="mt-2 text-xs text-muted-foreground">Ctrl+Enter / Cmd+Enter で保存</p>
+            </Card>
+          )}
           <h2 className="whitespace-pre-wrap text-lg font-medium leading-relaxed">{question.text}</h2>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onFlagToggle(!attempt?.flagged)}
-          className={attempt?.flagged ? "text-warning" : ""}
-        >
-          <FlagIcon className={`h-5 w-5 ${attempt?.flagged ? "fill-current" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onFlagToggle(!attempt?.flagged)}
+            className={attempt?.flagged ? "text-warning" : ""}
+          >
+            <FlagIcon className={`h-5 w-5 ${attempt?.flagged ? "fill-current" : ""}`} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={openNoteEditor}
+            className={hasSavedNote ? "text-primary" : "text-muted-foreground"}
+            aria-label="メモを編集"
+          >
+            <PencilIcon className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Choices */}
@@ -157,7 +228,7 @@ export function QuestionDisplay({
       )}
 
       {/* Answer Status */}
-      {isAnswered && (
+      {isAnswered && attempt && (
         <Card
           className={`border-2 p-4 ${
             attempt.isCorrect
@@ -215,23 +286,9 @@ export function QuestionDisplay({
         </Card>
       )}
 
-      {/* Note */}
-      <div>
-        <Label htmlFor="note" className="mb-2 block text-sm font-medium">
-          メモ
-        </Label>
-        <Textarea
-          id="note"
-          placeholder="メモを入力..."
-          value={attempt?.note ?? ""}
-          onChange={(e) => onNoteChange(e.target.value)}
-          rows={3}
-        />
-      </div>
-
       {/* Reset Button */}
       {isAnswered && (
-        <Button variant="outline" onClick={onResetAnswer} className="w-full bg-transparent">
+        <Button variant="outline" onClick={handleReset} className="w-full bg-transparent">
           未回答に戻す
         </Button>
       )}
