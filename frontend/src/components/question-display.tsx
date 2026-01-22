@@ -58,6 +58,10 @@ export function QuestionDisplay({
   const isMultiple = question.is_multi_select ?? Boolean((question.answer_choice_ids?.length ?? 0) > 1);
   const progressPct =
     totalQuestions > 0 ? Math.max(0, Math.min(100, (answeredQuestions / totalQuestions) * 100)) : 0;
+  const positionPct =
+    totalQuestions > 0
+      ? Math.max(0, Math.min(100, (questionNumber / totalQuestions) * 100))
+      : 0;
 
   const handleChoiceClick = (choiceId: string) => {
     if (isAnswered) return;
@@ -139,8 +143,16 @@ export function QuestionDisplay({
 
         <div className="mt-3 space-y-2">
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-              <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
+            <div className="relative h-2 flex-1">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
+              </div>
+              {/* Current position marker */}
+              <div
+                className="pointer-events-none absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/50"
+                style={{ left: `${positionPct}%` }}
+                aria-hidden="true"
+              />
             </div>
             <span className="shrink-0 tabular-nums">
               {answeredQuestions}/{totalQuestions}
@@ -169,7 +181,7 @@ export function QuestionDisplay({
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-            問題 {questionNumber}
+            問題 {questionNumber} / {totalQuestions}
           </span>
           {isMultiple && (
             <span className="rounded-md bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
