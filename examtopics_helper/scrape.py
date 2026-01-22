@@ -167,6 +167,101 @@ def _extract_answer_labels(text: str) -> list[str]:
     return out
 
 
+def _format_top_voted_explanation(discussion_text: Optional[str]) -> Optional[str]:
+    """
+    Keep only the highest-voted comment from the discussion text.
+
+    We rely on the plain-text markers that appear in extracted discussions:
+      "... upvoted 27 times ..."
+    This is robust even when the HTML structure changes.
+    """
+    if not discussion_text:
+        return None
+
+    s = str(discussion_text).replace("\u00a0", " ").strip()
+    vote_pat = re.compile(r"\bupvoted\s+(\d+)\s+times?\b", flags=re.I)
+
+    matches = list(vote_pat.finditer(s))
+    if not matches:
+        # No vote markers → leave as-is (but trimmed)
+        return s or None
+
+    blocks: list[tuple[int, str]] = []
+    start = 0
+    for m in matches:
+        block = s[start : m.start()].strip()
+        # Strip common separators between comments
+        block = re.sub(r"^\s*\.\.\.\s*", "", block)
+        try:
+            votes = int(m.group(1))
+        except Exception:
+            votes = 0
+        if block:
+            blocks.append((votes, block))
+        start = m.end()
+
+    if not blocks:
+        return None
+
+    votes, best = max(blocks, key=lambda x: x[0])
+
+    # Make it readable: normalize separators and spacing
+    best = best.replace(" ... ", "\n\n").replace("...", "\n\n")
+    best = re.sub(r"\n{3,}", "\n\n", best)
+    best = re.sub(r"[ \t]{2,}", " ", best).strip()
+
+    # Best-effort parse: author / age / selected answer
+    author = None
+    age = None
+    selected = None
+    body = best
+
+    m_author = re.match(r"^([^\s]+)\s+(.*)$", best)
+    rest = best
+    if m_author:
+        author = m_author.group(1).strip()
+        rest = m_author.group(2).strip()
+
+    # Remove common labels that appear between author and age
+    rest = re.sub(r"\b(Highly\s+Voted|Most\s+Recent)\b", "", rest, flags=re.I).strip()
+
+    m_age = re.search(r"(\d[\w\s,]*?\bago)\b", rest, flags=re.I)
+    if m_age:
+        age = m_age.group(1).strip()
+
+    m_sel = re.search(r"Selected\s+Answer\s*:\s*([A-Z]{1,6})", rest, flags=re.I)
+    if m_sel:
+        selected = m_sel.group(1).strip().upper()
+        body = rest[m_sel.end() :].strip()
+    else:
+        # Sometimes the thread uses "Correct D." instead of "Selected Answer: D"
+        m_corr = re.search(r"\bCorrect\s+([A-Z]{1,6})\b", rest, flags=re.I)
+        if m_corr:
+            selected = m_corr.group(1).strip().upper()
+            body = rest[m_corr.end() :].strip()
+        else:
+            body = rest.strip()
+
+    # If body redundantly starts with the age again, strip it
+    if age:
+        body = re.sub(rf"^\s*{re.escape(age)}\s*", "", body).strip()
+
+    # Add a newline before URLs for readability
+    body = re.sub(r"(?<!\s)(https?://\S+)", r"\n\1", body)
+    body = re.sub(r"\s+(https?://\S+)", r"\n\1", body).strip()
+
+    lines: list[str] = [f"Top voted ({votes} votes)", ""]
+    if author:
+        lines.append(f"author: {author}")
+    if age:
+        lines.append(age)
+    if selected:
+        lines.append(f"Selected Answer: {selected}")
+    if body:
+        lines.extend(["", body])
+    return "\n".join(lines).strip() or None
+
+
 def parse_discussion_page(html: str) -> ParsedQuestion:
     """
     Best-effort parser with fallbacks.
@@ -212,10 +307,11 @@ def parse_discussion_page(html: str) -> ParsedQuestion:
     explanation_el = soup.select_one(".discussion-container") or soup.select_one(
         ".discussion"
     )
-    explanation = _text_or_none(explanation_el)
+    discussion_text = _text_or_none(explanation_el)
+    explanation = _format_top_voted_explanation(discussion_text)
 
     # attempt to detect official answer labels (Suggested Answer preferred)
-    meta_text = f"{q_text_raw} {explanation or ''}"
+    meta_text = f"{q_text_raw} {discussion_text or ''}"
     extracted_labels = _extract_answer_labels(meta_text)
     correct_labels: set[str] = set(extracted_labels)
 

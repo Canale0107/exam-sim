@@ -145,7 +145,8 @@ flagged_new = meta_cols[0].checkbox("見直しフラグ", value=flagged, key=f"f
 note_new = meta_cols[2].text_input("メモ（任意）", value=note, key=f"note_{set_id}_{q.id}")
 
 btn_cols = st.columns([1, 1, 6])
-if btn_cols[0].button("保存", type="primary"):
+answered_now = bool(picked_ids)
+if btn_cols[0].button("回答", type="primary", disabled=(not answered_now)):
     is_correct: int | None = None
     if q.answer_choice_ids:
         # order-insensitive compare for multi-select
@@ -178,7 +179,14 @@ if btn_cols[1].button("未回答に戻す"):
     st.rerun()
 
 attempt = progress_db.get_attempt(conn, user_id, set_id, q.id)
+has_answered = False
 if attempt and attempt["selected_choice_ids"] is not None:
+    try:
+        has_answered = bool(json.loads(attempt["selected_choice_ids"]) if attempt["selected_choice_ids"] else [])
+    except Exception:
+        has_answered = False
+
+if attempt and has_answered:
     if attempt["is_correct"] == 1:
         st.success("正解")
     elif attempt["is_correct"] == 0:
@@ -186,7 +194,7 @@ if attempt and attempt["selected_choice_ids"] is not None:
     else:
         st.info("正誤不明（この問題セットに正答が含まれていません）")
 
-if q.answer_choice_ids:
+if q.answer_choice_ids and has_answered:
     st.caption(f"正答: {', '.join(q.answer_choice_ids)}")
 
 if q.explanation:

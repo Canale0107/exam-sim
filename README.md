@@ -87,7 +87,6 @@
 ```json
 {
   "set_id": "example-set",
-  "title": "Example Exam",
   "questions": [
     {
       "id": "q1",

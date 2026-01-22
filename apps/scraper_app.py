@@ -100,7 +100,6 @@ st.set_page_config(page_title="scraper (local)", layout="wide")
 def sidebar_config():
     st.sidebar.header("設定")
     set_id = st.sidebar.text_input("set_id（出力JSON）", value="AWS-SAP-C02").strip() or "set"
-    title = st.sidebar.text_input("title（出力JSON）", value="AWS-SAP-C02").strip() or set_id
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("URL収集（ディスカッション一覧）")
@@ -116,7 +115,6 @@ def sidebar_config():
 
     return {
         "set_id": set_id,
-        "title": title,
         "category": category,
         "max_page": int(max_page),
         "keyword": keyword,
@@ -209,6 +207,73 @@ def _normalize_question_dict(q: dict) -> dict:
         out["is_multi_select"] = bool(out.get("answer_choice_ids") and len(out["answer_choice_ids"]) > 1) or bool(
             re.search(r"\(\s*Choose\s+(?:two|three|four|\d+)\s*\)", out.get("text", ""), flags=re.I)
         )
+
+    # Explanation: keep only the highest-voted one if discussion dump is present
+    expl = out.get("explanation")
+    if isinstance(expl, str) and ("upvoted" in expl.lower()):
+        s = expl.replace("\u00a0", " ").strip()
+        vote_pat = re.compile(r"\bupvoted\s+(\d+)\s+times?\b", flags=re.I)
+        matches = list(vote_pat.finditer(s))
+        if matches:
+            blocks: list[tuple[int, str]] = []
+            start = 0
+            for m in matches:
+                block = s[start : m.start()].strip()
+                block = re.sub(r"^\s*\.\.\.\s*", "", block)
+                try:
+                    votes = int(m.group(1))
+                except Exception:
+                    votes = 0
+                if block:
+                    blocks.append((votes, block))
+                start = m.end()
+            if blocks:
+                votes, best = max(blocks, key=lambda x: x[0])
+                best = best.replace(" ... ", "\n\n").replace("...", "\n\n")
+                best = re.sub(r"\n{3,}", "\n\n", best)
+                best = re.sub(r"[ \t]{2,}", " ", best).strip()
+
+                author = None
+                age = None
+                selected = None
+                body = best
+
+                m_author = re.match(r"^([^\s]+)\s+(.*)$", best)
+                rest = best
+                if m_author:
+                    author = m_author.group(1).strip()
+                    rest = m_author.group(2).strip()
+                rest = re.sub(r"\b(Highly\s+Voted|Most\s+Recent)\b", "", rest, flags=re.I).strip()
+
+                m_age = re.search(r"(\d[\w\s,]*?\bago)\b", rest, flags=re.I)
+                if m_age:
+                    age = m_age.group(1).strip()
+                m_sel = re.search(r"Selected\s+Answer\s*:\s*([A-Z]{1,6})", rest, flags=re.I)
+                if m_sel:
+                    selected = m_sel.group(1).strip().upper()
+                    body = rest[m_sel.end() :].strip()
+                else:
+                    m_corr = re.search(r"\bCorrect\s+([A-Z]{1,6})\b", rest, flags=re.I)
+                    if m_corr:
+                        selected = m_corr.group(1).strip().upper()
+                        body = rest[m_corr.end() :].strip()
+                    else:
+                        body = rest.strip()
+                if age:
+                    body = re.sub(rf"^\s*{re.escape(age)}\s*", "", body).strip()
+                body = re.sub(r"(?<!\s)(https?://\S+)", r"\n\1", body)
+                body = re.sub(r"\s+(https?://\S+)", r"\n\1", body).strip()
+
+                lines: list[str] = [f"Top voted ({votes} votes)", ""]
+                if author:
+                    lines.append(f"author: {author}")
+                if age:
+                    lines.append(age)
+                if selected:
+                    lines.append(f"Selected Answer: {selected}")
+                if body:
+                    lines.extend(["", body])
+                out["explanation"] = "\n".join(lines).strip()
     return out
 
 
@@ -329,7 +394,6 @@ with tabs[1]:
     if questions:
         export_obj = {
             "set_id": cfg["set_id"],
-            "title": cfg["title"],
             "questions": questions,
         }
         export_bytes = json.dumps(export_obj, ensure_ascii=False, indent=2).encode("utf-8")

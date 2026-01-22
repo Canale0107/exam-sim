@@ -78,7 +78,8 @@ def parse_question_set(obj: Any) -> QuestionSet:
         raise QuestionSetFormatError("root must be an object")
 
     set_id = _as_str(_require(obj, "set_id"), field="set_id")
-    title = _as_str(_require(obj, "title"), field="title")
+    # `title` is optional; if omitted, it defaults to set_id (unified identifier).
+    title = _as_str(obj.get("title") or set_id, field="title")
     questions_raw = _require(obj, "questions")
     if not isinstance(questions_raw, list):
         raise QuestionSetFormatError("questions must be a list")
