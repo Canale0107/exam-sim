@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "study (BYOS)",
-  description: "BYOS (Bring Your Own Storage) の模試/学習UI。進捗のみ保存します。",
+  title: "模擬試験アプリ",
+  description: "問題セットを読み込んで効率的に学習できる模擬試験アプリ",
 };
 
 export default function RootLayout({
@@ -12,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
+    <html lang="ja" className="dark">
       <body className="antialiased">{children}</body>
     </html>
   );

@@ -6,6 +6,12 @@ import type { Question, QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
 import type { Attempt, ProgressState } from "@/lib/progress";
 import { clearProgress, emptyProgressState, loadProgress, saveProgress } from "@/lib/progress";
+import { QuestionSetSelector } from "@/components/question-set-selector";
+import { ExamSidebar } from "@/components/exam-sidebar";
+import { QuestionDisplay } from "@/components/question-display";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ChevronLeftIcon, ChevronRightIcon, SkipForwardIcon } from "@/components/icons";
 
 const SESSION_USER_ID_KEY = "exam-sim:userId";
 const SESSION_LAST_QSET_JSON_KEY = "exam-sim:lastQuestionSetJson";
@@ -76,8 +82,6 @@ export function StudyApp() {
 
   const [progress, setProgress] = useState<ProgressState>(emptyProgressState());
 
-  const [draftSelectedIds, setDraftSelectedIds] = useState<string[]>([]);
-
   // Restore userId + last loaded set (session only)
   useEffect(() => {
     const savedUser = window.sessionStorage.getItem(SESSION_USER_ID_KEY);
@@ -113,38 +117,15 @@ export function StudyApp() {
     saveProgress({ userId, setId: qset.set_id, state: progress });
   }, [progress, userId, qset]);
 
-  const summary = useMemo(() => {
-    if (!qset) return { answered: 0, correct: 0, unknown: 0, total: 0 };
-    let answered = 0;
-    let correct = 0;
-    let unknown = 0;
-    for (const q of qset.questions) {
-      const a = progress.attemptsByQuestionId[q.id];
-      if (!hasAnswered(a)) continue;
-      answered += 1;
-      if (a.isCorrect === true) correct += 1;
-      else if (a.isCorrect === null) unknown += 1;
-    }
-    return { answered, correct, unknown, total: qset.questions.length };
-  }, [qset, progress]);
-
   const current = useMemo(() => {
     if (!qset) return null;
     const idx = clamp(progress.currentIndex ?? 0, 0, qset.questions.length - 1);
     return { index: idx, question: qset.questions[idx] };
   }, [qset, progress.currentIndex]);
 
-  // Keep draft selection in sync with current question + stored attempt
-  useEffect(() => {
-    if (!current) return;
-    const attempt = progress.attemptsByQuestionId[current.question.id];
-    const ids = attempt?.selectedChoiceIds ?? [];
-    setDraftSelectedIds(Array.isArray(ids) ? ids : []);
-  }, [current?.question.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
   async function loadSample() {
     try {
-      const res = await fetch("/examples/sample.questions.json", { cache: "no-store" });
+      const res = await fetch("/examples/questions.sample.json", { cache: "no-store" });
       if (!res.ok) throw new Error(`failed to fetch sample: ${res.status}`);
       const text = await res.text();
       const loaded = loadQuestionSetFromJsonText(text);
@@ -175,6 +156,12 @@ export function StudyApp() {
     reader.readAsText(file);
   }
 
+  function handleSetSelected(set: QuestionSet) {
+    window.sessionStorage.setItem(SESSION_LAST_QSET_JSON_KEY, JSON.stringify(set));
+    setQset(set);
+    setQsetError(null);
+  }
+
   function gotoIndex(nextIndex: number) {
     if (!qset) return;
     setProgress((prev) => ({ ...prev, currentIndex: clamp(nextIndex, 0, qset.questions.length - 1) }));
@@ -182,7 +169,9 @@ export function StudyApp() {
 
   function gotoFirstUnanswered() {
     if (!qset) return;
-    const idx = qset.questions.findIndex((q) => !hasAnswered(progress.attemptsByQuestionId[q.id]));
+    const idx = qset.questions.findIndex(
+      (q) => !hasAnswered(progress.attemptsByQuestionId[q.id])
+    );
     if (idx >= 0) gotoIndex(idx);
   }
 
@@ -197,346 +186,135 @@ export function StudyApp() {
     setProgress((prev) => upsertAttempt(prev, current.question.id, { note: note ? note : null }));
   }
 
-  function onAnswer() {
+  function onAnswer(selectedChoiceIds: string[]) {
     if (!current) return;
-    const selected = draftSelectedIds;
-    if (!selected.length) return;
+    if (!selectedChoiceIds.length) return;
     const q = current.question;
-    const isCorrect = computeIsCorrect(q, selected);
+    const isCorrect = computeIsCorrect(q, selectedChoiceIds);
     setProgress((prev) =>
       upsertAttempt(prev, q.id, {
-        selectedChoiceIds: selected,
+        selectedChoiceIds,
         isCorrect,
         answeredAt: new Date().toISOString(),
-      }),
+      })
     );
   }
 
   function onResetToUnanswered() {
     if (!current) return;
-    setDraftSelectedIds([]);
     setProgress((prev) =>
       upsertAttempt(prev, current.question.id, {
         selectedChoiceIds: null,
         isCorrect: null,
         answeredAt: null,
-      }),
+      })
     );
   }
 
   function onClearProgress() {
     if (!qset) return;
-    clearProgress({ userId, setId: qset.set_id });
-    setProgress(emptyProgressState());
-    setDraftSelectedIds([]);
+    if (confirm("進捗をリセットしてもよろしいですか？この操作は取り消せません。")) {
+      clearProgress({ userId, setId: qset.set_id });
+      setProgress(emptyProgressState());
+    }
   }
 
-  const isMulti =
-    current?.question.is_multi_select ??
-    Boolean((current?.question.answer_choice_ids?.length ?? 0) > 1);
-  const currentAttempt = current ? progress.attemptsByQuestionId[current.question.id] : undefined;
+  function onBackToHome() {
+    if (confirm("ホームに戻りますか？進捗は保存されます。")) {
+      window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
+      setQset(null);
+      setProgress(emptyProgressState());
+    }
+  }
+
+  if (!qset) {
+    return <QuestionSetSelector onSetSelected={handleSetSelected} />;
+  }
+
+  if (!current) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-sm">No questions.</div>
+      </div>
+    );
+  }
+
+  const currentAttempt = progress.attemptsByQuestionId[current.question.id];
 
   return (
-    <div className="min-h-dvh bg-zinc-50 text-zinc-950 dark:bg-black dark:text-zinc-50">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-6 md:grid-cols-[320px_1fr]">
-        <aside className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm dark:border-white/15 dark:bg-zinc-950">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-zinc-500 dark:text-zinc-400">study (BYOS)</div>
-              <div className="text-lg font-semibold">模試アプリ</div>
-            </div>
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Sidebar */}
+      <aside className="hidden w-80 border-r border-sidebar-border lg:block">
+        <ExamSidebar
+          questionSet={qset}
+          progress={progress}
+          currentQuestionIndex={current.index}
+          onQuestionSelect={gotoIndex}
+          onReset={onClearProgress}
+          onBackToHome={onBackToHome}
+        />
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex flex-1 flex-col overflow-hidden">
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-3xl px-6 py-8">
+            <QuestionDisplay
+              question={current.question}
+              questionNumber={current.index + 1}
+              totalQuestions={qset.questions.length}
+              attempt={currentAttempt}
+              onAnswerSubmit={onAnswer}
+              onFlagToggle={onToggleFlagged}
+              onNoteChange={onChangeNote}
+              onResetAnswer={onResetToUnanswered}
+            />
           </div>
+        </div>
 
-          <div className="mt-4 space-y-3">
-            <div>
-              <label className="text-sm font-medium">ユーザーID（ローカル）</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-300 dark:border-white/15 dark:bg-zinc-950 dark:focus:ring-zinc-700"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder="local"
-              />
-            </div>
-
-            <div className="rounded-xl border border-dashed border-black/15 p-3 dark:border-white/20">
-              <div className="text-sm font-medium">問題セット（JSON / BYOS）</div>
-              <div className="mt-2 flex flex-col gap-2">
-                <input
-                  type="file"
-                  accept="application/json,.json"
-                  className="block w-full text-sm"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) onUploadFile(f);
-                    e.currentTarget.value = "";
-                  }}
-                />
-                <button
-                  className="h-9 rounded-lg border border-black/10 bg-white text-sm font-medium hover:bg-zinc-50 dark:border-white/15 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                  onClick={loadSample}
-                  type="button"
-                >
-                  サンプルを読み込む
-                </button>
-              </div>
-              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                問題本文はサーバに保存せず、ブラウザで読み込みます。
-              </div>
-            </div>
-
-            {qsetError ? (
-              <div className="rounded-xl border border-red-500/30 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-200">
-                <div className="font-medium">読み込みエラー</div>
-                <div className="mt-1 whitespace-pre-wrap">{qsetError}</div>
-              </div>
-            ) : null}
-
-            {qset ? (
-              <div className="space-y-2 rounded-xl border border-black/10 bg-white p-3 dark:border-white/15 dark:bg-zinc-950">
-                <div className="text-sm font-medium">セット情報</div>
-                <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                  <div>
-                    <span className="font-medium text-zinc-950 dark:text-zinc-50">set_id:</span> {qset.set_id}
-                  </div>
-                  <div>
-                    <span className="font-medium text-zinc-950 dark:text-zinc-50">title:</span> {qset.title}
-                  </div>
-                  <div>
-                    <span className="font-medium text-zinc-950 dark:text-zinc-50">questions:</span>{" "}
-                    {qset.questions.length}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/15 dark:bg-zinc-950">
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">進捗</div>
-                <div className="text-lg font-semibold">
-                  {summary.answered}/{summary.total}
-                </div>
-              </div>
-              <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/15 dark:bg-zinc-950">
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">正解数</div>
-                <div className="text-lg font-semibold">{summary.correct}</div>
-              </div>
-              <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/15 dark:bg-zinc-950">
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">正誤不明</div>
-                <div className="text-lg font-semibold">{summary.unknown}</div>
-              </div>
-              <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/15 dark:bg-zinc-950">
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">正答率</div>
-                <div className="text-lg font-semibold">
-                  {summary.answered ? `${((summary.correct / summary.answered) * 100).toFixed(1)}%` : "—"}
-                </div>
-              </div>
-            </div>
-
-            <button
-              className="h-9 w-full rounded-lg border border-black/10 bg-white text-sm font-medium hover:bg-zinc-50 disabled:opacity-50 dark:border-white/15 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-              onClick={onClearProgress}
-              disabled={!qset}
-              type="button"
+        {/* Navigation Bar */}
+        <div className="border-t border-border bg-card p-4">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+            <Button
+              variant="outline"
+              onClick={() => gotoIndex(current.index - 1)}
+              disabled={current.index === 0}
             >
-              進捗をリセット（このset_id + userId）
-            </button>
+              <ChevronLeftIcon className="mr-2 h-4 w-4" />
+              前の問題
+            </Button>
+
+            <Button variant="outline" onClick={gotoFirstUnanswered}>
+              <SkipForwardIcon className="mr-2 h-4 w-4" />
+              未回答へ
+            </Button>
+
+            <Button
+              onClick={() => gotoIndex(current.index + 1)}
+              disabled={!qset || current.index >= qset.questions.length - 1}
+            >
+              次の問題
+              <ChevronRightIcon className="ml-2 h-4 w-4" />
+            </Button>
           </div>
-        </aside>
+        </div>
+      </main>
 
-        <main className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm dark:border-white/15 dark:bg-zinc-950">
-          {!qset ? (
-            <div className="flex min-h-[280px] items-center justify-center">
-              <div className="max-w-md text-center">
-                <div className="text-lg font-semibold">問題セットJSONを読み込んでください</div>
-                <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                  例: <code className="rounded bg-black/5 px-1 py-0.5 dark:bg-white/10">questions.json</code>
-                </div>
-              </div>
-            </div>
-          ) : !current ? (
-            <div className="text-sm">No questions.</div>
-          ) : (
-            <div className="space-y-4">
-              <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                {qset.title} / Q {current.index + 1} / {qset.questions.length}{" "}
-                <span className="text-xs">(id={current.question.id})</span>
-              </div>
-
-              <div className="rounded-xl border border-black/10 bg-zinc-50 p-3 dark:border-white/15 dark:bg-black">
-                <div className="whitespace-pre-wrap text-base leading-7">{current.question.text}</div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="text-sm font-medium">
-                  回答を選択（{isMulti ? "複数選択" : "単一選択"}）
-                </div>
-
-                {isMulti ? (
-                  <div className="space-y-2">
-                    {current.question.choices.map((c) => {
-                      const checked = draftSelectedIds.includes(c.id);
-                      return (
-                        <label
-                          key={c.id}
-                          className="flex cursor-pointer items-start gap-3 rounded-xl border border-black/10 bg-white p-3 hover:bg-zinc-50 dark:border-white/15 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                        >
-                          <input
-                            type="checkbox"
-                            className="mt-1"
-                            checked={checked}
-                            onChange={(e) => {
-                              const next = e.target.checked
-                                ? Array.from(new Set([...draftSelectedIds, c.id]))
-                                : draftSelectedIds.filter((x) => x !== c.id);
-                              setDraftSelectedIds(next);
-                            }}
-                          />
-                          <div className="text-sm leading-6">
-                            <span className="font-semibold">{c.id}</span> {c.text}
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {current.question.choices.map((c) => {
-                      const checked = draftSelectedIds[0] === c.id;
-                      return (
-                        <label
-                          key={c.id}
-                          className="flex cursor-pointer items-start gap-3 rounded-xl border border-black/10 bg-white p-3 hover:bg-zinc-50 dark:border-white/15 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                        >
-                          <input
-                            type="radio"
-                            name={`q-${current.question.id}`}
-                            className="mt-1"
-                            checked={checked}
-                            onChange={() => setDraftSelectedIds([c.id])}
-                          />
-                          <div className="text-sm leading-6">
-                            <span className="font-semibold">{c.id}</span> {c.text}
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {(() => {
-                const answered = hasAnswered(currentAttempt);
-                if (!answered) return null;
-                if (currentAttempt?.isCorrect === true) {
-                  return (
-                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-200">
-                      正解
-                    </div>
-                  );
-                }
-                if (currentAttempt?.isCorrect === false) {
-                  return (
-                    <div className="rounded-xl border border-red-500/30 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-200">
-                      不正解
-                    </div>
-                  );
-                }
-                return (
-                  <div className="rounded-xl border border-blue-500/30 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-500/30 dark:bg-blue-950/40 dark:text-blue-200">
-                    正誤不明（この問題セットに正答が含まれていません）
-                  </div>
-                );
-              })()}
-
-              {(() => {
-                if (!hasAnswered(currentAttempt)) return null;
-                const ans = current.question.answer_choice_ids ?? null;
-                if (!ans || !ans.length) return null;
-                return (
-                  <div className="text-sm text-zinc-700 dark:text-zinc-300">
-                    <span className="font-medium">正答:</span> {ans.join(", ")}
-                  </div>
-                );
-              })()}
-
-              {current.question.explanation ? (
-                <details className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/15 dark:bg-zinc-950">
-                  <summary className="cursor-pointer text-sm font-medium">解説（問題セットに含まれる場合）</summary>
-                  <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-                    {current.question.explanation}
-                  </div>
-                </details>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr]">
-                <label className="flex items-center gap-2 rounded-xl border border-black/10 bg-white p-3 dark:border-white/15 dark:bg-zinc-950">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(currentAttempt?.flagged)}
-                    onChange={(e) => onToggleFlagged(e.target.checked)}
-                  />
-                  <span className="text-sm">見直しフラグ</span>
-                </label>
-                <div className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/15 dark:bg-zinc-950">
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400">メモ（任意）</div>
-                  <input
-                    className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-300 dark:border-white/15 dark:bg-zinc-950 dark:focus:ring-zinc-700"
-                    value={currentAttempt?.note ?? ""}
-                    onChange={(e) => onChangeNote(e.target.value)}
-                    placeholder="メモ..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className="h-10 rounded-lg bg-zinc-950 px-4 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                  onClick={onAnswer}
-                  disabled={draftSelectedIds.length === 0}
-                  type="button"
-                >
-                  回答
-                </button>
-                <button
-                  className="h-10 rounded-lg border border-black/10 bg-white px-4 text-sm font-medium hover:bg-zinc-50 dark:border-white/15 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                  onClick={onResetToUnanswered}
-                  type="button"
-                >
-                  未回答に戻す
-                </button>
-
-                <div className="flex-1" />
-
-                <button
-                  className="h-10 rounded-lg border border-black/10 bg-white px-4 text-sm font-medium hover:bg-zinc-50 disabled:opacity-50 dark:border-white/15 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                  onClick={() => gotoIndex(current.index - 1)}
-                  disabled={current.index === 0}
-                  type="button"
-                >
-                  ← 前へ
-                </button>
-                <button
-                  className="h-10 rounded-lg border border-black/10 bg-white px-4 text-sm font-medium hover:bg-zinc-50 disabled:opacity-50 dark:border-white/15 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                  onClick={() => gotoIndex(current.index + 1)}
-                  disabled={!qset || current.index >= qset.questions.length - 1}
-                  type="button"
-                >
-                  次へ →
-                </button>
-                <button
-                  className="h-10 rounded-lg border border-black/10 bg-white px-4 text-sm font-medium hover:bg-zinc-50 disabled:opacity-50 dark:border-white/15 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                  onClick={gotoFirstUnanswered}
-                  disabled={!qset}
-                  type="button"
-                >
-                  未回答へ
-                </button>
-              </div>
-            </div>
-          )}
-        </main>
+      {/* Mobile Stats (visible only on small screens) */}
+      <div className="lg:hidden">
+        <Card className="fixed bottom-20 right-4 p-4 shadow-lg">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">進捗</p>
+            <p className="text-lg font-semibold">
+              {Object.keys(progress.attemptsByQuestionId).filter(
+                (qId) => hasAnswered(progress.attemptsByQuestionId[qId])
+              ).length}
+              /{qset.questions.length}
+            </p>
+          </div>
+        </Card>
       </div>
     </div>
   );
 }
-
