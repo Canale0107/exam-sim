@@ -15,7 +15,7 @@ import {
   isCognitoConfigured,
   storeTokens,
 } from "@/lib/awsAuth";
-import { QuestionSetSelector } from "@/components/question-set-selector";
+import { QuestionSetGrid } from "@/components/question-set-grid";
 import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
 import { ResultsScreen } from "@/app/_components/ResultsScreen";
@@ -273,7 +273,7 @@ export function StudyApp() {
   }
 
   if (!qset) {
-    return <QuestionSetSelector onSetSelected={handleSetSelected} />;
+    return <QuestionSetGrid onSetSelected={handleSetSelected} />;
   }
 
   if (!current) {
