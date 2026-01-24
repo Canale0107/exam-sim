@@ -30,6 +30,10 @@ output "http_api_question_sets_upload_url" {
   value = "${aws_apigatewayv2_api.http.api_endpoint}/question-sets/upload-url"
 }
 
+output "http_api_question_sets_list_url" {
+  value = "${aws_apigatewayv2_api.http.api_endpoint}/question-sets"
+}
+
 output "http_api_question_sets_download_url" {
   value = "${aws_apigatewayv2_api.http.api_endpoint}/question-sets/download-url"
 }

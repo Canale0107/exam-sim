@@ -54,6 +54,43 @@ def handler(event, context):
     )
     path = (event.get("rawPath") or "").rstrip("/")
 
+    # GET /question-sets (list)
+    if method == "GET" and path.endswith("/question-sets"):
+        prefix = f"question-sets/{sub}/"
+        out = []
+        token = None
+        while True:
+            kwargs = {"Bucket": bucket, "Prefix": prefix, "MaxKeys": 1000}
+            if token:
+                kwargs["ContinuationToken"] = token
+            res = s3.list_objects_v2(**kwargs)
+            for obj in res.get("Contents", []):
+                key = obj.get("Key") or ""
+                if not key.endswith(".json"):
+                    continue
+                name = key[len(prefix) :]
+                if not name.endswith(".json"):
+                    continue
+                set_id = name[: -len(".json")]
+                if not validate_set_id(set_id):
+                    continue
+                out.append(
+                    {
+                        "setId": set_id,
+                        "key": key,
+                        "size": obj.get("Size"),
+                        "lastModified": obj.get("LastModified").isoformat()
+                        if obj.get("LastModified")
+                        else None,
+                    }
+                )
+            if res.get("IsTruncated"):
+                token = res.get("NextContinuationToken")
+                continue
+            break
+        out.sort(key=lambda x: (x.get("lastModified") or "", x.get("setId") or ""), reverse=True)
+        return response(200, {"items": out})
+
     # POST /question-sets/upload-url
     if method == "POST" and path.endswith("/question-sets/upload-url"):
         try:

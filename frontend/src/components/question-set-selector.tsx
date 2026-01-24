@@ -22,6 +22,9 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
   const [cloudSetId, setCloudSetId] = useState<string>("example-set");
   const [cloudStatus, setCloudStatus] = useState<string>("");
   const [selectedJsonText, setSelectedJsonText] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [cloudItems, setCloudItems] = useState<Array<{ setId: string; lastModified?: string | null }>>([]);
+  const [cloudLoading, setCloudLoading] = useState<boolean>(false);
 
   useEffect(() => {
     // Avoid hydration mismatch by reading localStorage after hydration.
@@ -32,6 +35,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setSelectedFile(file);
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -55,6 +59,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       const text = await res.text();
       const loaded = loadQuestionSetFromJsonText(text);
       setSelectedJsonText(text);
+      setSelectedFile(null);
       setCloudSetId(loaded.set_id);
       onSetSelected(loaded);
       setError("");
@@ -63,6 +68,28 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
     }
   };
 
+  async function refreshCloudList() {
+    const base = apiBaseUrl();
+    if (!base) return;
+    if (!isCognitoConfigured() || !getCurrentUser()) return;
+    setCloudLoading(true);
+    try {
+      const res = await fetch(`${base.replace(/\/$/, "")}/question-sets`, { headers: { ...authHeader() } });
+      if (!res.ok) throw new Error(`list failed: ${res.status}`);
+      const data = (await res.json()) as { items?: Array<{ setId: string; lastModified?: string | null }> };
+      setCloudItems(Array.isArray(data.items) ? data.items : []);
+    } catch (e) {
+      setCloudStatus(e instanceof Error ? e.message : "一覧取得に失敗しました");
+    } finally {
+      setCloudLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!userEmail) return;
+    refreshCloudList();
+  }, [userEmail]);
+
   async function uploadToCloud() {
     setCloudStatus("");
     const base = apiBaseUrl();
@@ -70,7 +97,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       setCloudStatus("API_BASE_URL が未設定です（frontend/.env.local）。");
       return;
     }
-    if (!isCognitoConfigured() || !userEmail) {
+    if (!isCognitoConfigured() || !getCurrentUser()) {
       setCloudStatus("ログインしてください（/auth）。");
       return;
     }
@@ -99,11 +126,12 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       const putRes = await fetch(data.uploadUrl, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: selectedJsonText,
+        body: selectedFile ?? selectedJsonText,
       });
       if (!putRes.ok) throw new Error(`S3 put failed: ${putRes.status}`);
 
       setCloudStatus("アップロード完了");
+      await refreshCloudList();
     } catch (e) {
       setCloudStatus(e instanceof Error ? e.message : "アップロードに失敗しました");
     }
@@ -116,7 +144,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       setCloudStatus("API_BASE_URL が未設定です（frontend/.env.local）。");
       return;
     }
-    if (!isCognitoConfigured() || !userEmail) {
+    if (!isCognitoConfigured() || !getCurrentUser()) {
       setCloudStatus("ログインしてください（/auth）。");
       return;
     }
@@ -141,6 +169,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       const text = await jsonRes.text();
       const loaded = loadQuestionSetFromJsonText(text);
       setSelectedJsonText(text);
+      setSelectedFile(null);
       setCloudSetId(loaded.set_id);
       onSetSelected(loaded);
       setCloudStatus("読み込み完了");
@@ -172,7 +201,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
         <div className="space-y-4">
           <div>
             <Label htmlFor="file-upload" className="text-base">
-              JSONファイルをアップロード
+              ローカルのJSONを読み込む
             </Label>
             <div className="mt-2">
               <Input
@@ -227,6 +256,43 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
                 <Button variant="outline" className="flex-1 bg-transparent" onClick={loadFromCloud}>
                   クラウドから読み込む
                 </Button>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>一覧</span>
+                <button type="button" className="hover:underline" onClick={refreshCloudList} disabled={cloudLoading}>
+                  更新
+                </button>
+              </div>
+              <div className="max-h-40 overflow-auto rounded-md border border-border">
+                {cloudItems.length === 0 ? (
+                  <div className="p-3 text-xs text-muted-foreground">（クラウドに問題セットがありません）</div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {cloudItems.map((it) => (
+                      <li key={it.setId} className="flex items-center justify-between gap-2 p-2 text-sm">
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 truncate text-left hover:underline"
+                          onClick={() => setCloudSetId(it.setId)}
+                          title={it.setId}
+                        >
+                          {it.setId}
+                        </button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={() => {
+                            setCloudSetId(it.setId);
+                            loadFromCloud();
+                          }}
+                        >
+                          読み込む
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               {cloudStatus && <div className="text-xs text-muted-foreground">{cloudStatus}</div>}
             </div>

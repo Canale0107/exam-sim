@@ -110,6 +110,16 @@ resource "aws_apigatewayv2_route" "question_sets_upload_url" {
   target = "integrations/${aws_apigatewayv2_integration.lambda_question_sets.id}"
 }
 
+resource "aws_apigatewayv2_route" "question_sets_list" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /question-sets"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_question_sets.id}"
+}
+
 resource "aws_apigatewayv2_route" "question_sets_download_url" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = "GET /question-sets/download-url"

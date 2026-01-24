@@ -91,6 +91,14 @@ curl -sS \
 
 ## 問題セットAPIの簡易テスト（S3 + 署名付きURL）
 
+1. 一覧を取得:
+
+```bash
+curl -sS \
+  -H "Authorization: Bearer ${ID_TOKEN}" \
+  "<http_api_question_sets_list_url>" | jq
+```
+
 1. 署名付きアップロードURLを取得:
 
 ```bash
