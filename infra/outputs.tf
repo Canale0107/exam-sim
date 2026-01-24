@@ -22,3 +22,7 @@ output "http_api_me_url" {
   value = "${aws_apigatewayv2_api.http.api_endpoint}/me"
 }
 
+output "http_api_progress_url" {
+  value = "${aws_apigatewayv2_api.http.api_endpoint}/progress"
+}
+

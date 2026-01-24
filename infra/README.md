@@ -70,5 +70,21 @@ curl -sS -H "Authorization: Bearer ${ID_TOKEN}" "<http_api_me_url>" | jq
 
 1. Cognito（Email+Password）
 2. API Gateway + Lambda（認証を通す `GET /me`）
-3. DynamoDB（進捗スナップショット）
+3. DynamoDB（進捗スナップショット / `GET/PUT /progress`）
 4. S3（問題セットJSON + 署名付きURL）
+
+## 進捗APIの簡易テスト（`/progress`）
+
+`setId` を固定して保存→取得:
+
+```bash
+curl -sS -X PUT \
+  -H "Authorization: Bearer ${ID_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"setId":"example-set","state":{"currentIndex":0,"attemptsByQuestionId":{},"updatedAt":"'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"}}' \
+  "<http_api_progress_url>" | jq
+
+curl -sS \
+  -H "Authorization: Bearer ${ID_TOKEN}" \
+  "<http_api_progress_url>?setId=example-set" | jq
+```

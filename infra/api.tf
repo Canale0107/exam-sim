@@ -9,7 +9,7 @@ resource "aws_apigatewayv2_api" "http" {
   cors_configuration {
     allow_credentials = true
     allow_headers     = ["authorization", "content-type"]
-    allow_methods     = ["GET", "OPTIONS"]
+    allow_methods     = ["GET", "PUT", "OPTIONS"]
     allow_origins     = var.callback_urls
   }
 }
@@ -54,6 +54,41 @@ resource "aws_lambda_permission" "allow_apigw_invoke_me" {
   statement_id  = "AllowExecutionFromAPIGatewayV2"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.me.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
+}
+
+resource "aws_apigatewayv2_integration" "lambda_progress" {
+  api_id                 = aws_apigatewayv2_api.http.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.progress.arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "progress_get" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /progress"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
+}
+
+resource "aws_apigatewayv2_route" "progress_put" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "PUT /progress"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
+}
+
+resource "aws_lambda_permission" "allow_apigw_invoke_progress" {
+  statement_id  = "AllowExecutionFromAPIGatewayV2Progress"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.progress.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
 }
