@@ -9,7 +9,7 @@ __pycache__/
 .env.*.local
 .venv/
 venv/
-.python-version
+.uv-cache/
 .npm-cache/
 local_questions/
 .cursor/

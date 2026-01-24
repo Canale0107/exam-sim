@@ -118,19 +118,8 @@
 
 ## セットアップ
 
-```bash
-uv venv .venv
-source .venv/bin/activate
-uv sync
-```
-
-依存関係の追加/更新は `pyproject.toml` を唯一の正として `uv` で行います。
-
-```bash
-uv add <package>
-uv remove <package>
-uv sync
-```
+- **Webアプリ（Next.js）**: `frontend/README.md` を参照
+- **スクレイピングツール（Python）**: `question_set_tools/README.md` を参照
 
 ## 起動
 
@@ -151,9 +140,12 @@ npm run dev
 
 ### スクレイピングツール（CLI / ローカル）
 
+セットアップ手順は `question_set_tools/README.md` を参照してください。
+
 URL収集（ディスカッション一覧ページ → URLリスト）:
 
 ```bash
+cd question_set_tools
 uv run python -m question_set_tools.cli collect-urls \
   --category amazon/ \
   --max-page 575 \
@@ -164,6 +156,7 @@ uv run python -m question_set_tools.cli collect-urls \
 スクレイプ（URLリスト → questions.json）:
 
 ```bash
+cd question_set_tools
 uv run python -m question_set_tools.cli scrape \
   --set-id AWS-SAP-C02 \
   --urls urls.txt \

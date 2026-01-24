@@ -1,7 +1,7 @@
 [project]
 name = "exam-sim"
 version = "0.1.0"
-description = "BYOS exam simulator UI + progress tracker"
+description = "Local-only scraper/convert CLI for building question set JSONs"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,3 +10,7 @@ dependencies = [
     "requests==2.32.3",
     "tqdm==4.66.6",
 ]
+
+[project.scripts]
+exam-sim-tools = "question_set_tools.cli:main"
+
