@@ -7,7 +7,14 @@ import type { Question, QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
 import type { Attempt, ProgressState } from "@/lib/progress";
 import { clearProgress, emptyProgressState, loadProgress, saveProgress } from "@/lib/progress";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  apiBaseUrl,
+  authHeader,
+  exchangeCodeForTokens,
+  getCurrentUser,
+  isCognitoConfigured,
+  storeTokens,
+} from "@/lib/awsAuth";
 import { QuestionSetSelector } from "@/components/question-set-selector";
 import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
@@ -17,7 +24,7 @@ import { ChevronLeftIcon, ChevronRightIcon, SkipForwardIcon } from "@/components
 
 const SESSION_LAST_QSET_JSON_KEY = "exam-sim:lastQuestionSetJson";
 
-type AuthUser = { id: string; email: string | null };
+type AuthUser = { id: string; email: string | null; idToken: string | null };
 
 function clamp(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
@@ -79,7 +86,10 @@ function upsertAttempt(
 }
 
 export function StudyApp() {
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
+    const u = getCurrentUser();
+    return u ? { id: u.sub, email: u.email, idToken: null } : null;
+  });
   const [qset, setQset] = useState<QuestionSet | null>(() => {
     if (typeof window === "undefined") return null;
     const savedJson = window.sessionStorage.getItem(SESSION_LAST_QSET_JSON_KEY);
@@ -99,36 +109,81 @@ export function StudyApp() {
   const userId = authUser?.id ?? "local";
 
   useEffect(() => {
-    if (!supabase) return;
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      const u = data.session?.user ?? null;
-      setAuthUser(u ? { id: u.id, email: u.email ?? null } : null);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user ?? null;
-      setAuthUser(u ? { id: u.id, email: u.email ?? null } : null);
-    });
-    return () => {
-      mounted = false;
-      data.subscription.unsubscribe();
-    };
+    // Handle Cognito hosted UI callback on "/?code=..."
+    if (!isCognitoConfigured()) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const error = params.get("error");
+    if (error) {
+      // Clear error params so we don't loop.
+      params.delete("error");
+      params.delete("error_description");
+      window.history.replaceState({}, "", `${window.location.pathname}${params.size ? `?${params}` : ""}`);
+    }
+
+    if (code) {
+      exchangeCodeForTokens(code)
+        .then((t) => {
+          storeTokens(t);
+          const u = getCurrentUser();
+          setAuthUser(u ? { id: u.sub, email: u.email, idToken: t.id_token } : null);
+        })
+        .finally(() => {
+          params.delete("code");
+          params.delete("state");
+          window.history.replaceState({}, "", `${window.location.pathname}${params.size ? `?${params}` : ""}`);
+        });
+    }
   }, []);
 
   // Load progress whenever user/set changes
   useEffect(() => {
     if (!qset) return;
-    const loaded = loadProgress({ userId, setId: qset.set_id });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setProgress(normalizeProgressForSet(qset, loaded));
-    setView("exam");
-  }, [userId, qset?.set_id]); // eslint-disable-line react-hooks/exhaustive-deps
+    const local = normalizeProgressForSet(qset, loadProgress({ userId, setId: qset.set_id }));
+    queueMicrotask(() => {
+      setProgress(local);
+      setView("exam");
+    });
+
+    const base = apiBaseUrl();
+    if (!base) return;
+    if (userId === "local") return;
+
+    const url = `${base.replace(/\/$/, "")}/progress?setId=${encodeURIComponent(qset.set_id)}`;
+    fetch(url, { headers: { ...authHeader() } })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return (await res.json()) as { state?: ProgressState | null };
+      })
+      .then((remote) => {
+        const remoteState = remote?.state ?? null;
+        if (!remoteState) return;
+        const merged =
+          String(remoteState.updatedAt ?? "") > String(local.updatedAt ?? "") ? remoteState : local;
+        setProgress(normalizeProgressForSet(qset, merged));
+      })
+      .catch(() => {
+        // ignore
+      });
+  }, [userId, qset]);
 
   // Persist progress
   useEffect(() => {
     if (!qset) return;
     saveProgress({ userId, setId: qset.set_id, state: progress });
+
+    const base = apiBaseUrl();
+    if (!base) return;
+    if (userId === "local") return;
+    const url = `${base.replace(/\/$/, "")}/progress`;
+    fetch(url, {
+      method: "PUT",
+      headers: { "content-type": "application/json", ...authHeader() },
+      body: JSON.stringify({ setId: qset.set_id, state: progress }),
+    }).catch(() => {
+      // ignore
+    });
   }, [progress, userId, qset]);
 
   const current = useMemo(() => {

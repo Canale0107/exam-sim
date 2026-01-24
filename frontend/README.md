@@ -6,6 +6,6 @@
 
 ## Supabase（Auth）
 
-Email+Password でログインできる `/auth` を用意しています。
+`/auth` から Cognito Hosted UI でログインできます。
 
 - 環境変数の設定: `frontend/ENVIRONMENT.md` を参照
