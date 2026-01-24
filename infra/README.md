@@ -23,8 +23,8 @@ terraform init
 export TF_VAR_project_name="exam-sim"
 export TF_VAR_region="ap-northeast-1"
 export TF_VAR_cognito_domain_prefix="exam-sim"
-export TF_VAR_callback_urls='["http://localhost:3000/"]'
-export TF_VAR_logout_urls='["http://localhost:3000/"]'
+export TF_VAR_callback_urls='["http://localhost:3000"]'
+export TF_VAR_logout_urls='["http://localhost:3000"]'
 ```
 
 1. plan/apply

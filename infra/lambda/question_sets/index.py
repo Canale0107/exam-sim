@@ -4,9 +4,19 @@ import re
 from datetime import datetime, timedelta, timezone
 
 import boto3
+from botocore.config import Config
 
 
-s3 = boto3.client("s3")
+def _make_s3_client():
+    # Important: force regional endpoint + SigV4.
+    # If we accidentally return a global endpoint (bucket.s3.amazonaws.com),
+    # browsers may hit a redirect on CORS preflight (OPTIONS), which is blocked.
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    cfg = Config(signature_version="s3v4", s3={"addressing_style": "virtual"})
+    return boto3.client("s3", region_name=region, config=cfg)
+
+
+s3 = _make_s3_client()
 
 
 def response(status_code: int, body: dict):

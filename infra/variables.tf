@@ -19,12 +19,12 @@ variable "cognito_domain_prefix" {
 variable "callback_urls" {
   type        = list(string)
   description = "Allowed OAuth callback URLs for Cognito hosted UI."
-  default     = ["http://localhost:3000/"]
+  default     = ["http://localhost:3000"]
 }
 
 variable "logout_urls" {
   type        = list(string)
   description = "Allowed logout URLs for Cognito hosted UI."
-  default     = ["http://localhost:3000/"]
+  default     = ["http://localhost:3000"]
 }
 

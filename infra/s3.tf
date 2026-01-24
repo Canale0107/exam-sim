@@ -26,7 +26,7 @@ resource "aws_s3_bucket_cors_configuration" "question_sets" {
 
   cors_rule {
     allowed_methods = ["GET", "PUT"]
-    allowed_origins = var.callback_urls
+    allowed_origins = [for o in var.callback_urls : trimsuffix(o, "/")]
     allowed_headers = ["*"]
     expose_headers  = ["ETag"]
     max_age_seconds = 3600

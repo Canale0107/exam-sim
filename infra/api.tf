@@ -1,5 +1,6 @@
 locals {
   cognito_issuer = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.this.id}"
+  cors_origins   = [for o in var.callback_urls : trimsuffix(o, "/")]
 }
 
 resource "aws_apigatewayv2_api" "http" {
@@ -10,7 +11,7 @@ resource "aws_apigatewayv2_api" "http" {
     allow_credentials = true
     allow_headers     = ["authorization", "content-type"]
     allow_methods     = ["GET", "PUT", "POST", "OPTIONS"]
-    allow_origins     = var.callback_urls
+    allow_origins     = local.cors_origins
   }
 }
 

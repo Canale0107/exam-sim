@@ -23,6 +23,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
   const [cloudStatus, setCloudStatus] = useState<string>("");
   const [selectedJsonText, setSelectedJsonText] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pendingSet, setPendingSet] = useState<QuestionSet | null>(null);
   const [cloudItems, setCloudItems] = useState<Array<{ setId: string; lastModified?: string | null }>>([]);
   const [cloudLoading, setCloudLoading] = useState<boolean>(false);
 
@@ -43,7 +44,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
         const loaded = loadQuestionSetFromJsonText(text);
         setSelectedJsonText(text);
         setCloudSetId(loaded.set_id);
-        onSetSelected(loaded);
+        setPendingSet(loaded);
         setError("");
       } catch (err) {
         setError(`ファイルの読み込みに失敗しました: ${err instanceof Error ? err.message : "不明なエラー"}`);
@@ -61,7 +62,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       setSelectedJsonText(text);
       setSelectedFile(null);
       setCloudSetId(loaded.set_id);
-      onSetSelected(loaded);
+      setPendingSet(loaded);
       setError("");
     } catch (err) {
       setError(`サンプルの読み込みに失敗しました: ${err instanceof Error ? err.message : "不明なエラー"}`);
@@ -137,7 +138,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
     }
   }
 
-  async function loadFromCloud() {
+  async function loadFromCloud(setIdOverride?: string) {
     setCloudStatus("");
     const base = apiBaseUrl();
     if (!base) {
@@ -148,7 +149,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       setCloudStatus("ログインしてください（/auth）。");
       return;
     }
-    const setId = cloudSetId.trim();
+    const setId = (setIdOverride ?? cloudSetId).trim();
     if (!setId) {
       setCloudStatus("setId を入力してください。");
       return;
@@ -171,6 +172,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       setSelectedJsonText(text);
       setSelectedFile(null);
       setCloudSetId(loaded.set_id);
+      // Cloud load implies "start with this set"
       onSetSelected(loaded);
       setCloudStatus("読み込み完了");
     } catch (e) {
@@ -223,6 +225,31 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
             </div>
           </div>
 
+          {pendingSet && (
+            <div className="rounded-lg border border-border p-4">
+              <div className="text-sm font-medium">読み込み済み（ローカル）</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                setId: {pendingSet.set_id} / {pendingSet.questions.length}問
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Button className="flex-1" onClick={() => onSetSelected(pendingSet)}>
+                  この問題で開始
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 bg-transparent"
+                  onClick={() => {
+                    setPendingSet(null);
+                    setSelectedFile(null);
+                    setSelectedJsonText("");
+                  }}
+                >
+                  クリア
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -253,7 +280,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
                 <Button variant="outline" className="flex-1 bg-transparent" onClick={uploadToCloud}>
                   クラウドにアップロード
                 </Button>
-                <Button variant="outline" className="flex-1 bg-transparent" onClick={loadFromCloud}>
+                <Button variant="outline" className="flex-1 bg-transparent" onClick={() => loadFromCloud()}>
                   クラウドから読み込む
                 </Button>
               </div>
@@ -284,7 +311,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
                           className="h-8 px-2"
                           onClick={() => {
                             setCloudSetId(it.setId);
-                            loadFromCloud();
+                            loadFromCloud(it.setId);
                           }}
                         >
                           読み込む
