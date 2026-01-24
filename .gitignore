@@ -11,7 +11,8 @@ __pycache__/
 venv/
 .uv-cache/
 .npm-cache/
-local_questions/
+tmp/
+output/
 .cursor/
 
 # Terraform
