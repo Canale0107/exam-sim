@@ -156,21 +156,20 @@ export function StudyApp() {
     if (userId === "local") return;
 
     const url = `${base.replace(/\/$/, "")}/progress?setId=${encodeURIComponent(qset.set_id)}`;
-    fetch(url, { headers: { ...authHeader() } })
-      .then(async (res) => {
-        if (!res.ok) return null;
-        return (await res.json()) as { state?: ProgressState | null };
-      })
-      .then((remote) => {
+    (async () => {
+      try {
+        const res = await fetch(url, { headers: { ...(await authHeader()) } });
+        if (!res.ok) return;
+        const remote = (await res.json()) as { state?: ProgressState | null };
         const remoteState = remote?.state ?? null;
         if (!remoteState) return;
         const merged =
           String(remoteState.updatedAt ?? "") > String(local.updatedAt ?? "") ? remoteState : local;
         setProgress(normalizeProgressForSet(qset, merged));
-      })
-      .catch(() => {
+      } catch {
         // ignore
-      });
+      }
+    })();
   }, [userId, qset]);
 
   // Persist progress
@@ -182,13 +181,17 @@ export function StudyApp() {
     if (!base) return;
     if (userId === "local") return;
     const url = `${base.replace(/\/$/, "")}/progress`;
-    fetch(url, {
-      method: "PUT",
-      headers: { "content-type": "application/json", ...authHeader() },
-      body: JSON.stringify({ setId: qset.set_id, state: progress }),
-    }).catch(() => {
-      // ignore
-    });
+    (async () => {
+      try {
+        await fetch(url, {
+          method: "PUT",
+          headers: { "content-type": "application/json", ...(await authHeader()) },
+          body: JSON.stringify({ setId: qset.set_id, state: progress }),
+        });
+      } catch {
+        // ignore
+      }
+    })();
   }, [progress, userId, qset]);
 
   const current = useMemo(() => {

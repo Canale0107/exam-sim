@@ -75,7 +75,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
     if (!isCognitoConfigured() || !getCurrentUser()) return;
     setCloudLoading(true);
     try {
-      const res = await fetch(`${base.replace(/\/$/, "")}/question-sets`, { headers: { ...authHeader() } });
+      const res = await fetch(`${base.replace(/\/$/, "")}/question-sets`, { headers: { ...(await authHeader()) } });
       if (!res.ok) throw new Error(`list failed: ${res.status}`);
       const data = (await res.json()) as { items?: Array<{ setId: string; lastModified?: string | null }> };
       setCloudItems(Array.isArray(data.items) ? data.items : []);
@@ -116,7 +116,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       setCloudStatus("署名付きURLを取得中...");
       const uploadUrlRes = await fetch(`${base.replace(/\/$/, "")}/question-sets/upload-url`, {
         method: "POST",
-        headers: { "content-type": "application/json", ...authHeader() },
+        headers: { "content-type": "application/json", ...(await authHeader()) },
         body: JSON.stringify({ setId }),
       });
       if (!uploadUrlRes.ok) throw new Error(`upload-url failed: ${uploadUrlRes.status}`);
@@ -158,7 +158,7 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
       setCloudStatus("署名付きURLを取得中...");
       const res = await fetch(
         `${base.replace(/\/$/, "")}/question-sets/download-url?setId=${encodeURIComponent(setId)}`,
-        { headers: { ...authHeader() } },
+        { headers: { ...(await authHeader()) } },
       );
       if (!res.ok) throw new Error(`download-url failed: ${res.status}`);
       const data = (await res.json()) as { downloadUrl: string };

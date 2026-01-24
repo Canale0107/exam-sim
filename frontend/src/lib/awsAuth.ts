@@ -101,8 +101,89 @@ export function getCurrentUser(): CognitoUser | null {
   return { sub, email };
 }
 
-export function authHeader(): Record<string, string> {
+function readJwtExpMs(token: string): number | null {
+  const claims = parseJwt(token);
+  const exp = claims?.exp;
+  if (typeof exp !== "number") return null;
+  // JWT exp is seconds since epoch
+  return exp * 1000;
+}
+
+function computeTokenExpiryMs(tokens: CognitoTokens): number | null {
+  const fromJwt = tokens.id_token ? readJwtExpMs(tokens.id_token) : null;
+  if (fromJwt) return fromJwt;
+
+  // Fallback: obtained_at + expires_in (seconds)
+  if (!tokens.obtained_at || typeof tokens.expires_in !== "number") return null;
+  const obtained = Date.parse(tokens.obtained_at);
+  if (!Number.isFinite(obtained)) return null;
+  return obtained + tokens.expires_in * 1000;
+}
+
+function isExpiredOrNearExpiry(tokens: CognitoTokens, skewSeconds = 60): boolean {
+  const expMs = computeTokenExpiryMs(tokens);
+  if (!expMs) return false; // If unknown, assume valid and let server decide.
+  return Date.now() >= expMs - skewSeconds * 1000;
+}
+
+async function refreshTokens(refreshToken: string): Promise<Pick<CognitoTokens, "id_token" | "access_token" | "token_type" | "expires_in">> {
+  const { domain, clientId } = getCognitoConfig();
+  const tokenUrl = `https://${domain}/oauth2/token`;
+
+  const body = new URLSearchParams();
+  body.set("grant_type", "refresh_token");
+  body.set("client_id", clientId);
+  body.set("refresh_token", refreshToken);
+
+  const res = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  if (!res.ok) throw new Error(`token refresh failed: ${res.status}`);
+
+  const data = (await res.json()) as Partial<CognitoTokens>;
+  // Cognito refresh token grant typically returns a new id_token/access_token.
+  if (!data.id_token || !data.access_token) throw new Error("token refresh response missing tokens");
+
+  return {
+    id_token: data.id_token,
+    access_token: data.access_token,
+    token_type: data.token_type,
+    expires_in: data.expires_in,
+  };
+}
+
+export async function getValidTokens(): Promise<CognitoTokens | null> {
   const tokens = getStoredTokens();
+  if (!tokens?.id_token) return null;
+
+  if (!isExpiredOrNearExpiry(tokens)) return tokens;
+
+  // No refresh token -> force re-login
+  if (!tokens.refresh_token) {
+    clearTokens();
+    return null;
+  }
+
+  try {
+    const refreshed = await refreshTokens(tokens.refresh_token);
+    const next: CognitoTokens = {
+      ...tokens,
+      ...refreshed,
+      refresh_token: tokens.refresh_token, // keep
+      obtained_at: new Date().toISOString(),
+    };
+    storeTokens(next);
+    return next;
+  } catch {
+    clearTokens();
+    return null;
+  }
+}
+
+export async function authHeader(): Promise<Record<string, string>> {
+  const tokens = await getValidTokens();
   if (!tokens?.id_token) return {};
   return { Authorization: `Bearer ${tokens.id_token}` };
 }
