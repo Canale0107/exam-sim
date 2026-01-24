@@ -52,3 +52,4 @@
 - Firebase Auth + Firestore + Storage
   - Pros: MVPが速い
   - Cons: 進捗や統計など、集計クエリが増えると設計制約が出やすい
+

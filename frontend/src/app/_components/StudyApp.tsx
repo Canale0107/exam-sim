@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 import type { Question, QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
 import type { Attempt, ProgressState } from "@/lib/progress";
 import { clearProgress, emptyProgressState, loadProgress, saveProgress } from "@/lib/progress";
+import { supabase } from "@/lib/supabaseClient";
 import { QuestionSetSelector } from "@/components/question-set-selector";
 import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
@@ -13,8 +15,9 @@ import { ResultsScreen } from "@/app/_components/ResultsScreen";
 import { Button } from "@/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon, SkipForwardIcon } from "@/components/icons";
 
-const SESSION_USER_ID_KEY = "exam-sim:userId";
 const SESSION_LAST_QSET_JSON_KEY = "exam-sim:lastQuestionSetJson";
+
+type AuthUser = { id: string; email: string | null };
 
 function clamp(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
@@ -76,34 +79,42 @@ function upsertAttempt(
 }
 
 export function StudyApp() {
-  const [userId, setUserId] = useState<string>("local");
-  const [qset, setQset] = useState<QuestionSet | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [qset, setQset] = useState<QuestionSet | null>(() => {
+    if (typeof window === "undefined") return null;
+    const savedJson = window.sessionStorage.getItem(SESSION_LAST_QSET_JSON_KEY);
+    if (!savedJson || !savedJson.trim()) return null;
+    try {
+      return loadQuestionSetFromJsonText(savedJson);
+    } catch {
+      // If we can't restore, clear the session to avoid failing every reload.
+      window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
+      return null;
+    }
+  });
 
   const [progress, setProgress] = useState<ProgressState>(emptyProgressState());
   const [view, setView] = useState<"exam" | "results">("exam");
 
-  // Restore userId + last loaded set (session only)
-  useEffect(() => {
-    const savedUser = window.sessionStorage.getItem(SESSION_USER_ID_KEY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (savedUser && savedUser.trim()) setUserId(savedUser.trim());
+  const userId = authUser?.id ?? "local";
 
-    const savedJson = window.sessionStorage.getItem(SESSION_LAST_QSET_JSON_KEY);
-    if (savedJson && savedJson.trim()) {
-      try {
-        const loaded = loadQuestionSetFromJsonText(savedJson);
-        setQset(loaded);
-      } catch {
-        // If we can't restore, clear the session to avoid failing every reload.
-        window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
-        setQset(null);
-      }
-    }
+  useEffect(() => {
+    if (!supabase) return;
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      const u = data.session?.user ?? null;
+      setAuthUser(u ? { id: u.id, email: u.email ?? null } : null);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const u = session?.user ?? null;
+      setAuthUser(u ? { id: u.id, email: u.email ?? null } : null);
+    });
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
   }, []);
-
-  useEffect(() => {
-    window.sessionStorage.setItem(SESSION_USER_ID_KEY, userId);
-  }, [userId]);
 
   // Load progress whenever user/set changes
   useEffect(() => {
@@ -252,6 +263,17 @@ export function StudyApp() {
 
       {/* Main Content */}
       <main className="flex flex-1 flex-col overflow-hidden">
+        <div className="border-b border-border bg-card">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-3">
+            <div className="min-w-0 truncate text-xs text-muted-foreground">
+              {authUser ? `ログイン中: ${authUser.email ?? authUser.id}` : "ゲスト（未ログイン）"}
+            </div>
+            <Link href="/auth" className="text-xs text-muted-foreground hover:underline">
+              アカウント
+            </Link>
+          </div>
+        </div>
+
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
           {view === "exam" ? (

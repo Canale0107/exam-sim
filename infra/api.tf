@@ -1,0 +1,60 @@
+locals {
+  cognito_issuer = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.this.id}"
+}
+
+resource "aws_apigatewayv2_api" "http" {
+  name          = "${local.name}-http-api"
+  protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_credentials = true
+    allow_headers     = ["authorization", "content-type"]
+    allow_methods     = ["GET", "OPTIONS"]
+    allow_origins     = var.callback_urls
+  }
+}
+
+resource "aws_apigatewayv2_authorizer" "cognito_jwt" {
+  api_id          = aws_apigatewayv2_api.http.id
+  authorizer_type = "JWT"
+  name            = "${local.name}-cognito-jwt"
+
+  identity_sources = ["$request.header.Authorization"]
+
+  jwt_configuration {
+    audience = [aws_cognito_user_pool_client.web.id]
+    issuer   = local.cognito_issuer
+  }
+}
+
+resource "aws_apigatewayv2_integration" "lambda_me" {
+  api_id                 = aws_apigatewayv2_api.http.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.me.arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "me" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /me"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_me.id}"
+}
+
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.http.id
+  name        = "$default"
+  auto_deploy = true
+}
+
+resource "aws_lambda_permission" "allow_apigw_invoke_me" {
+  statement_id  = "AllowExecutionFromAPIGatewayV2"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.me.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
+}
+

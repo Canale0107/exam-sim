@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import type { QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
 import { BookOpenIcon, UploadIcon } from "@/components/icons";
-import { useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 
 interface QuestionSetSelectorProps {
   onSetSelected: (set: QuestionSet) => void;
@@ -16,6 +18,23 @@ interface QuestionSetSelectorProps {
 export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setUserEmail(data.session?.user?.email ?? null);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -51,6 +70,19 @@ export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps)
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-lg p-8">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="text-xs text-muted-foreground">
+            {!isSupabaseConfigured()
+              ? "Supabase未設定（ゲスト）"
+              : userEmail
+                ? `ログイン中: ${userEmail}`
+                : "ゲスト（未ログイン）"}
+          </div>
+          <Link href="/auth" className="text-xs text-muted-foreground hover:underline">
+            アカウント
+          </Link>
+        </div>
+
         <div className="mb-6 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <BookOpenIcon className="h-8 w-8 text-primary" />

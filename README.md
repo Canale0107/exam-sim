@@ -176,3 +176,12 @@ uv run python -m question_set_tools.cli scrape \
 1. Webアプリ（試験UI + 問題セット保存 + 進捗同期）を先に完成
 2. 統計・復習（弱点分析、間隔反復）
 3. インポート/エクスポート（JSON）とデータ削除（ユーザーコントロール）
+
+## バックエンド設計ドキュメント
+
+バックエンドの設計判断や次の作業は `docs/` にまとめています（意思決定は ADR で記録）。
+
+- `docs/backend.md`
+- `docs/adr/README.md`
+
+現在の方針（AWS-first / Supabase-first など）は ADR を正とします。
