@@ -87,24 +87,28 @@ function upsertAttempt(
 
 export function StudyApp() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const [qset, setQset] = useState<QuestionSet | null>(() => {
-    if (typeof window === "undefined") return null;
-    const savedJson = window.sessionStorage.getItem(SESSION_LAST_QSET_JSON_KEY);
-    if (!savedJson || !savedJson.trim()) return null;
-    try {
-      return loadQuestionSetFromJsonText(savedJson);
-    } catch {
-      // If we can't restore, clear the session to avoid failing every reload.
-      window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
-      return null;
-    }
-  });
+  const [qset, setQset] = useState<QuestionSet | null>(null);
 
   const [progress, setProgress] = useState<ProgressState>(emptyProgressState());
   const [view, setView] = useState<"exam" | "results">("exam");
   const isLoadingRemoteRef = useRef(false);
 
   const userId = authUser?.id ?? "local";
+
+  // Load question set from sessionStorage after hydration to avoid hydration mismatch
+  useEffect(() => {
+    queueMicrotask(() => {
+      const savedJson = window.sessionStorage.getItem(SESSION_LAST_QSET_JSON_KEY);
+      if (!savedJson || !savedJson.trim()) return;
+      try {
+        const loaded = loadQuestionSetFromJsonText(savedJson);
+        setQset(loaded);
+      } catch {
+        // If we can't restore, clear the session to avoid failing every reload.
+        window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     // Handle Cognito hosted UI callback on "/?code=..."

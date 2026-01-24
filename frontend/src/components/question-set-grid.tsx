@@ -24,6 +24,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [cloudItems, setCloudItems] = useState<CloudQuestionSet[]>([]);
   const [cloudLoading, setCloudLoading] = useState<boolean>(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
@@ -33,13 +34,17 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
   const [uploadJsonText, setUploadJsonText] = useState<string>("");
 
   useEffect(() => {
-    queueMicrotask(() => setUserEmail(getCurrentUser()?.email ?? null));
+    queueMicrotask(() => {
+      const user = getCurrentUser();
+      setUserEmail(user?.email ?? null);
+      setIsLoggedIn(isCognitoConfigured() && user !== null);
+    });
   }, []);
 
   async function refreshCloudList() {
     const base = apiBaseUrl();
     if (!base) return;
-    if (!isCognitoConfigured() || !getCurrentUser()) return;
+    if (!isLoggedIn) return;
     setCloudLoading(true);
     try {
       const res = await fetch(`${base.replace(/\/$/, "")}/question-sets`, { headers: { ...(await authHeader()) } });
@@ -88,7 +93,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       setUploadStatus("API_BASE_URL が未設定です（frontend/.env.local）。");
       return;
     }
-    if (!isCognitoConfigured() || !getCurrentUser()) {
+    if (!isLoggedIn) {
       setUploadStatus("ログインしてください（/auth）。");
       return;
     }
@@ -139,7 +144,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       setUploadStatus("API_BASE_URL が未設定です（frontend/.env.local）。");
       return;
     }
-    if (!isCognitoConfigured() || !getCurrentUser()) {
+    if (!isLoggedIn) {
       setUploadStatus("ログインしてください（/auth）。");
       return;
     }
@@ -207,7 +212,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
             <Link href="/auth" className="text-xs text-muted-foreground hover:underline">
               アカウント
             </Link>
-            {isCognitoConfigured() && getCurrentUser() && (
+            {isLoggedIn && (
               <Button
                 variant="outline"
                 size="sm"
@@ -248,7 +253,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         </div>
 
         {/* Cloud Question Sets */}
-        {isCognitoConfigured() && getCurrentUser() && (
+        {isLoggedIn && (
           <div>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">クラウドの問題集</h2>
