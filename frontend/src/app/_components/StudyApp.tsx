@@ -86,10 +86,7 @@ function upsertAttempt(
 }
 
 export function StudyApp() {
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
-    const u = getCurrentUser();
-    return u ? { id: u.sub, email: u.email, idToken: null } : null;
-  });
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [qset, setQset] = useState<QuestionSet | null>(() => {
     if (typeof window === "undefined") return null;
     const savedJson = window.sessionStorage.getItem(SESSION_LAST_QSET_JSON_KEY);
@@ -135,6 +132,14 @@ export function StudyApp() {
           window.history.replaceState({}, "", `${window.location.pathname}${params.size ? `?${params}` : ""}`);
         });
     }
+  }, []);
+
+  useEffect(() => {
+    // Avoid hydration mismatch by reading localStorage after hydration.
+    queueMicrotask(() => {
+      const u = getCurrentUser();
+      setAuthUser(u ? { id: u.sub, email: u.email, idToken: null } : null);
+    });
   }, []);
 
   // Load progress whenever user/set changes

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -7,8 +8,12 @@ import { Card } from "@/components/ui/card";
 import { buildLoginUrl, buildLogoutUrl, clearTokens, getCurrentUser, isCognitoConfigured } from "@/lib/awsAuth";
 
 export default function AuthPage() {
-  const user = getCurrentUser();
-  const email = user?.email ?? null;
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Avoid hydration mismatch by reading localStorage after hydration.
+    queueMicrotask(() => setEmail(getCurrentUser()?.email ?? null));
+  }, []);
 
   if (!isCognitoConfigured()) {
     return (

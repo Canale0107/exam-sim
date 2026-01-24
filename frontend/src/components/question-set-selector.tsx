@@ -8,7 +8,7 @@ import type { QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
 import { BookOpenIcon, UploadIcon } from "@/components/icons";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl, authHeader, getCurrentUser, isCognitoConfigured } from "@/lib/awsAuth";
 
 interface QuestionSetSelectorProps {
@@ -18,10 +18,15 @@ interface QuestionSetSelectorProps {
 export function QuestionSetSelector({ onSetSelected }: QuestionSetSelectorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>("");
-  const [userEmail] = useState<string | null>(() => getCurrentUser()?.email ?? null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [cloudSetId, setCloudSetId] = useState<string>("example-set");
   const [cloudStatus, setCloudStatus] = useState<string>("");
   const [selectedJsonText, setSelectedJsonText] = useState<string>("");
+
+  useEffect(() => {
+    // Avoid hydration mismatch by reading localStorage after hydration.
+    queueMicrotask(() => setUserEmail(getCurrentUser()?.email ?? null));
+  }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

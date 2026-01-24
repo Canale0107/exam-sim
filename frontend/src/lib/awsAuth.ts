@@ -14,17 +14,22 @@ export type CognitoUser = {
 
 const STORAGE_KEY = "exam-sim:auth:cognitoTokens";
 
-function env(name: string): string | null {
-  const v = process.env[name];
-  return v && v.trim() ? v.trim() : null;
-}
+// IMPORTANT:
+// Next.js exposes NEXT_PUBLIC_* to the client bundle only when accessed via
+// static property access (process.env.NEXT_PUBLIC_...). Do not use dynamic
+// access like process.env[name] or the client may see "undefined".
+const COGNITO_DOMAIN = process.env.NEXT_PUBLIC_COGNITO_DOMAIN?.trim() || "";
+const COGNITO_CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID?.trim() || "";
+const COGNITO_REDIRECT_URI = process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI?.trim() || "";
+const COGNITO_LOGOUT_URI = process.env.NEXT_PUBLIC_COGNITO_LOGOUT_URI?.trim() || "";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "";
 
 export function isCognitoConfigured(): boolean {
-  return Boolean(env("NEXT_PUBLIC_COGNITO_DOMAIN") && env("NEXT_PUBLIC_COGNITO_CLIENT_ID") && env("NEXT_PUBLIC_COGNITO_REDIRECT_URI"));
+  return Boolean(COGNITO_DOMAIN && COGNITO_CLIENT_ID && COGNITO_REDIRECT_URI);
 }
 
 export function apiBaseUrl(): string | null {
-  return env("NEXT_PUBLIC_API_BASE_URL");
+  return API_BASE_URL || null;
 }
 
 export function getCognitoConfig(): {
@@ -33,14 +38,15 @@ export function getCognitoConfig(): {
   redirectUri: string;
   logoutUri: string | null;
 } {
-  const domain = env("NEXT_PUBLIC_COGNITO_DOMAIN");
-  const clientId = env("NEXT_PUBLIC_COGNITO_CLIENT_ID");
-  const redirectUri = env("NEXT_PUBLIC_COGNITO_REDIRECT_URI");
-  const logoutUri = env("NEXT_PUBLIC_COGNITO_LOGOUT_URI");
-  if (!domain || !clientId || !redirectUri) {
+  if (!COGNITO_DOMAIN || !COGNITO_CLIENT_ID || !COGNITO_REDIRECT_URI) {
     throw new Error("Missing Cognito env. See frontend/ENVIRONMENT.md.");
   }
-  return { domain, clientId, redirectUri, logoutUri };
+  return {
+    domain: COGNITO_DOMAIN,
+    clientId: COGNITO_CLIENT_ID,
+    redirectUri: COGNITO_REDIRECT_URI,
+    logoutUri: COGNITO_LOGOUT_URI || null,
+  };
 }
 
 function base64UrlDecode(input: string): string {
