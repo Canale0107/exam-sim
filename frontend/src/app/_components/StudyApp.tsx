@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import type { Question, QuestionSet } from "@/lib/questionSet";
@@ -102,6 +102,7 @@ export function StudyApp() {
 
   const [progress, setProgress] = useState<ProgressState>(emptyProgressState());
   const [view, setView] = useState<"exam" | "results">("exam");
+  const isLoadingRemoteRef = useRef(false);
 
   const userId = authUser?.id ?? "local";
 
@@ -146,28 +147,51 @@ export function StudyApp() {
   useEffect(() => {
     if (!qset) return;
     const local = normalizeProgressForSet(qset, loadProgress({ userId, setId: qset.set_id }));
+    
+    // Set local progress immediately for UI responsiveness
     queueMicrotask(() => {
       setProgress(local);
       setView("exam");
     });
 
     const base = apiBaseUrl();
-    if (!base) return;
-    if (userId === "local") return;
+    if (!base) {
+      isLoadingRemoteRef.current = false;
+      return;
+    }
+    if (userId === "local") {
+      isLoadingRemoteRef.current = false;
+      return;
+    }
+
+    // Mark that we're loading from remote to prevent premature saves
+    isLoadingRemoteRef.current = true;
 
     const url = `${base.replace(/\/$/, "")}/progress?setId=${encodeURIComponent(qset.set_id)}`;
     (async () => {
       try {
         const res = await fetch(url, { headers: { ...(await authHeader()) } });
-        if (!res.ok) return;
+        if (!res.ok) {
+          isLoadingRemoteRef.current = false;
+          return;
+        }
         const remote = (await res.json()) as { state?: ProgressState | null };
         const remoteState = remote?.state ?? null;
-        if (!remoteState) return;
-        const merged =
-          String(remoteState.updatedAt ?? "") > String(local.updatedAt ?? "") ? remoteState : local;
+        if (!remoteState) {
+          isLoadingRemoteRef.current = false;
+          return;
+        }
+        
+        // Compare timestamps more reliably
+        const localTime = new Date(local.updatedAt || 0).getTime();
+        const remoteTime = new Date(remoteState.updatedAt || 0).getTime();
+        const merged = remoteTime > localTime ? remoteState : local;
+        
+        // Update progress with merged state
         setProgress(normalizeProgressForSet(qset, merged));
+        isLoadingRemoteRef.current = false;
       } catch {
-        // ignore
+        isLoadingRemoteRef.current = false;
       }
     })();
   }, [userId, qset]);
@@ -175,11 +199,17 @@ export function StudyApp() {
   // Persist progress
   useEffect(() => {
     if (!qset) return;
+    
+    // Always save to localStorage immediately for offline support
     saveProgress({ userId, setId: qset.set_id, state: progress });
 
     const base = apiBaseUrl();
     if (!base) return;
     if (userId === "local") return;
+    
+    // Don't save to remote while loading from remote to avoid race conditions
+    if (isLoadingRemoteRef.current) return;
+    
     const url = `${base.replace(/\/$/, "")}/progress`;
     (async () => {
       try {
