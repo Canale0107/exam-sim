@@ -26,3 +26,15 @@ output "http_api_progress_url" {
   value = "${aws_apigatewayv2_api.http.api_endpoint}/progress"
 }
 
+output "http_api_question_sets_upload_url" {
+  value = "${aws_apigatewayv2_api.http.api_endpoint}/question-sets/upload-url"
+}
+
+output "http_api_question_sets_download_url" {
+  value = "${aws_apigatewayv2_api.http.api_endpoint}/question-sets/download-url"
+}
+
+output "s3_question_sets_bucket" {
+  value = aws_s3_bucket.question_sets.bucket
+}
+

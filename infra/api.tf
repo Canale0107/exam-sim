@@ -9,7 +9,7 @@ resource "aws_apigatewayv2_api" "http" {
   cors_configuration {
     allow_credentials = true
     allow_headers     = ["authorization", "content-type"]
-    allow_methods     = ["GET", "PUT", "OPTIONS"]
+    allow_methods     = ["GET", "PUT", "POST", "OPTIONS"]
     allow_origins     = var.callback_urls
   }
 }
@@ -89,6 +89,41 @@ resource "aws_lambda_permission" "allow_apigw_invoke_progress" {
   statement_id  = "AllowExecutionFromAPIGatewayV2Progress"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.progress.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
+}
+
+resource "aws_apigatewayv2_integration" "lambda_question_sets" {
+  api_id                 = aws_apigatewayv2_api.http.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.question_sets.arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "question_sets_upload_url" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "POST /question-sets/upload-url"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_question_sets.id}"
+}
+
+resource "aws_apigatewayv2_route" "question_sets_download_url" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /question-sets/download-url"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_question_sets.id}"
+}
+
+resource "aws_lambda_permission" "allow_apigw_invoke_question_sets" {
+  statement_id  = "AllowExecutionFromAPIGatewayV2QuestionSets"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.question_sets.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
 }

@@ -88,3 +88,40 @@ curl -sS \
   -H "Authorization: Bearer ${ID_TOKEN}" \
   "<http_api_progress_url>?setId=example-set" | jq
 ```
+
+## 問題セットAPIの簡易テスト（S3 + 署名付きURL）
+
+1. 署名付きアップロードURLを取得:
+
+```bash
+UPLOAD="$(
+  curl -sS -X POST \
+    -H "Authorization: Bearer ${ID_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"setId":"example-set"}' \
+    "<http_api_question_sets_upload_url>"
+)"
+echo "$UPLOAD" | jq
+PUT_URL="$(echo "$UPLOAD" | jq -r .uploadUrl)"
+```
+
+1. JSONをS3へアップロード（PUT）:
+
+```bash
+curl -sS -X PUT \
+  -H "Content-Type: application/json" \
+  --data-binary @../examples/sample.questions.json \
+  "$PUT_URL"
+```
+
+1. 署名付きダウンロードURLを取得して確認:
+
+```bash
+DOWNLOAD="$(
+  curl -sS \
+    -H "Authorization: Bearer ${ID_TOKEN}" \
+    "<http_api_question_sets_download_url>?setId=example-set"
+)"
+GET_URL="$(echo "$DOWNLOAD" | jq -r .downloadUrl)"
+curl -sS "$GET_URL" | jq '.set_id'
+```
