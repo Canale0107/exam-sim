@@ -347,7 +347,7 @@ export function StudyApp() {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
-      <aside className="hidden w-80 border-r border-sidebar-border lg:block">
+      <aside className="hidden w-80 border-r border-sidebar-border lg:block shadow-sm">
         <ExamSidebar
           questionSet={qset}
           progress={progress}
@@ -360,12 +360,12 @@ export function StudyApp() {
 
       {/* Main Content */}
       <main className="flex flex-1 flex-col overflow-hidden">
-        <div className="border-b border-border bg-card">
-          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-3">
-            <div className="min-w-0 truncate text-xs text-muted-foreground">
+        <div className="border-b border-border bg-card shadow-sm">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-4">
+            <div className="min-w-0 truncate text-sm text-muted-foreground">
               {authUser ? `ログイン中: ${authUser.email ?? authUser.id}` : "ゲスト（未ログイン）"}
             </div>
-            <Link href="/auth" className="text-xs text-muted-foreground hover:underline">
+            <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               アカウント
             </Link>
           </div>
@@ -374,7 +374,7 @@ export function StudyApp() {
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
           {view === "exam" ? (
-            <div className="mx-auto max-w-3xl px-6 py-8">
+            <div className="mx-auto max-w-3xl px-6 py-10">
               <QuestionDisplay
                 key={current.question.id}
                 question={current.question}
@@ -410,26 +410,39 @@ export function StudyApp() {
 
         {/* Navigation Bar */}
         {view === "exam" && (
-          <div className="border-t border-border bg-card p-4">
+          <div className="border-t border-border bg-card shadow-lg p-5">
             <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
               <Button
                 variant="outline"
                 onClick={() => gotoIndex(current.index - 1)}
                 disabled={current.index === 0}
+                className="h-11 shadow-sm hover:shadow-md transition-all disabled:opacity-50"
               >
                 <ChevronLeftIcon className="mr-2 h-4 w-4" />
                 前の問題
               </Button>
 
-              <Button variant="outline" onClick={gotoFirstUnanswered}>
+              <Button 
+                variant="outline" 
+                onClick={gotoFirstUnanswered}
+                className="h-11 shadow-sm hover:shadow-md transition-all"
+              >
                 <SkipForwardIcon className="mr-2 h-4 w-4" />
                 未回答へ
               </Button>
 
               {isLastQuestion ? (
-                <Button onClick={onFinish}>解答を終了する</Button>
+                <Button 
+                  onClick={onFinish}
+                  className="h-11 shadow-md hover:shadow-lg transition-all"
+                >
+                  解答を終了する
+                </Button>
               ) : (
-                <Button onClick={() => gotoIndex(current.index + 1)}>
+                <Button 
+                  onClick={() => gotoIndex(current.index + 1)}
+                  className="h-11 shadow-md hover:shadow-lg transition-all"
+                >
                   次の問題
                   <ChevronRightIcon className="ml-2 h-4 w-4" />
                 </Button>

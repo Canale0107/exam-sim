@@ -194,22 +194,22 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <BookOpenIcon className="h-6 w-6 text-primary" />
+      <div className="border-b border-border bg-card shadow-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 shadow-sm">
+              <BookOpenIcon className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">模擬試験アプリ</h1>
-              <p className="text-xs text-muted-foreground">問題セットを選択して学習を開始しましょう</p>
+              <h1 className="text-2xl font-bold tracking-tight">模擬試験アプリ</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">問題セットを選択して学習を開始しましょう</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="text-xs text-muted-foreground">
+            <div className="text-sm text-muted-foreground hidden sm:block">
               {userEmail ? `ログイン中: ${userEmail}` : "ゲスト（未ログイン）"}
             </div>
-            <Link href="/auth" className="text-xs text-muted-foreground hover:underline">
+            <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               アカウント
             </Link>
             {isLoggedIn && (
@@ -221,6 +221,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                   setError("");
                   setUploadStatus("");
                 }}
+                className="shadow-sm hover:shadow-md transition-all"
               >
                 <PlusIcon className="mr-2 h-4 w-4" />
                 アップロード
@@ -231,18 +232,25 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       </div>
 
       {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-6 py-10">
         {error && (
-          <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+          <div className="mb-6 rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-sm text-destructive shadow-sm">
+            {error}
+          </div>
         )}
 
         {/* Sample Question Set */}
-        <div className="mb-8">
-          <h2 className="mb-4 text-lg font-semibold">サンプル問題集</h2>
-          <Card className="cursor-pointer transition-all hover:shadow-md" onClick={handleLoadSample}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpenIcon className="h-5 w-5" />
+        <div className="mb-10">
+          <h2 className="mb-5 text-xl font-bold tracking-tight">サンプル問題集</h2>
+          <Card 
+            className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group" 
+            onClick={handleLoadSample}
+          >
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <BookOpenIcon className="h-5 w-5 text-primary" />
+                </div>
                 サンプル問題セット
               </CardTitle>
             </CardHeader>
@@ -255,29 +263,41 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         {/* Cloud Question Sets */}
         {isLoggedIn && (
           <div>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">クラウドの問題集</h2>
-              <Button variant="outline" size="sm" onClick={refreshCloudList} disabled={cloudLoading}>
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-xl font-bold tracking-tight">クラウドの問題集</h2>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={refreshCloudList} 
+                disabled={cloudLoading}
+                className="shadow-sm hover:shadow-md transition-all"
+              >
                 {cloudLoading ? "読み込み中..." : "更新"}
               </Button>
             </div>
             {cloudItems.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                  クラウドに問題セットがありません。アップロードボタンから問題集を追加してください。
+              <Card className="border-2 border-dashed">
+                <CardContent className="py-12 text-center">
+                  <BookOpenIcon className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">
+                    クラウドに問題セットがありません。<br />
+                    アップロードボタンから問題集を追加してください。
+                  </p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {cloudItems.map((item) => (
                   <Card
                     key={item.setId}
-                    className="cursor-pointer transition-all hover:shadow-md"
+                    className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group"
                     onClick={() => loadFromCloud(item.setId)}
                   >
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 truncate">
-                        <BookOpenIcon className="h-5 w-5 flex-shrink-0" />
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-3 truncate text-base">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
+                          <BookOpenIcon className="h-5 w-5 text-primary" />
+                        </div>
                         <span className="truncate" title={item.setId}>
                           {item.setId}
                         </span>
@@ -298,7 +318,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         {/* Upload Modal */}
         {showUploadModal && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setShowUploadModal(false);
@@ -310,13 +330,13 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
               }
             }}
           >
-            <Card className="w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
-              <CardHeader>
-                <CardTitle>問題集をアップロード</CardTitle>
+            <Card className="w-full max-w-lg border-2 shadow-xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl">問題集をアップロード</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 <div>
-                  <Label htmlFor="upload-file">JSONファイルを選択</Label>
+                  <Label htmlFor="upload-file" className="text-sm font-semibold">JSONファイルを選択</Label>
                   <div className="mt-2">
                     <Input
                       id="upload-file"
@@ -328,7 +348,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                     />
                     <Button
                       variant="outline"
-                      className="w-full bg-transparent"
+                      className="w-full h-11 bg-transparent hover:bg-muted/50 transition-all"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <UploadIcon className="mr-2 h-4 w-4" />
@@ -339,25 +359,27 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
 
                 {uploadJsonText && (
                   <div>
-                    <Label htmlFor="upload-set-id">問題セットID</Label>
+                    <Label htmlFor="upload-set-id" className="text-sm font-semibold">問題セットID</Label>
                     <Input
                       id="upload-set-id"
                       value={uploadSetId}
                       onChange={(e) => setUploadSetId(e.target.value)}
                       placeholder="example-set"
-                      className="mt-2"
+                      className="mt-2 h-11"
                     />
                   </div>
                 )}
 
                 {uploadStatus && (
-                  <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">{uploadStatus}</div>
+                  <div className="rounded-lg bg-muted/50 border border-border p-4 text-sm text-foreground">
+                    {uploadStatus}
+                  </div>
                 )}
 
-                <div className="flex gap-2">
+                <div className="flex gap-3 pt-2">
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 h-11 bg-transparent hover:bg-muted/50 transition-all"
                     onClick={() => {
                       setShowUploadModal(false);
                       setUploadFile(null);
@@ -370,7 +392,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                     キャンセル
                   </Button>
                   <Button
-                    className="flex-1"
+                    className="flex-1 h-11 shadow-md hover:shadow-lg transition-all"
                     onClick={handleUpload}
                     disabled={!uploadJsonText || !uploadSetId.trim()}
                   >

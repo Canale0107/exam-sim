@@ -10,15 +10,15 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, icon: Icon, description, className }: StatsCardProps) {
   return (
-    <Card className={`p-4 ${className || ""}`}>
+    <Card className={`p-6 shadow-sm hover:shadow-md transition-all ${className || ""}`}>
       <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="mt-2 text-2xl font-semibold">{value}</p>
-          {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-muted-foreground mb-2">{title}</p>
+          <p className="text-3xl font-bold tracking-tight">{value}</p>
+          {description && <p className="mt-2 text-xs text-muted-foreground">{description}</p>}
         </div>
-        <div className="rounded-lg bg-primary/10 p-2">
-          <Icon className="h-5 w-5 text-primary" />
+        <div className="rounded-xl bg-primary/10 p-3 ml-4 shrink-0 shadow-sm">
+          <Icon className="h-6 w-6 text-primary" />
         </div>
       </div>
     </Card>

@@ -115,25 +115,35 @@ export function QuestionDisplay({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Sticky header (stays visible while scrolling long question text) */}
-      <div className="sticky top-0 z-10 -mx-6 border-b border-border bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+      <div className="sticky top-0 z-10 -mx-6 border-b border-border bg-background/95 px-6 py-5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex items-start justify-between gap-4">
-          <div />
+          <div className="flex items-center gap-2">
+            <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
+              問題 {questionNumber} / {totalQuestions}
+            </span>
+            {isMultiple && (
+              <span className="rounded-lg bg-warning/10 px-3 py-1.5 text-sm font-semibold text-warning">
+                複数選択
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => onFlagToggle(!attempt?.flagged)}
-              className={attempt?.flagged ? "text-warning" : ""}
+              className={`transition-colors ${attempt?.flagged ? "text-warning hover:text-warning/80" : "hover:text-warning"}`}
+              aria-label={attempt?.flagged ? "フラグを解除" : "フラグを設定"}
             >
-              <FlagIcon className={`h-5 w-5 ${attempt?.flagged ? "fill-current" : ""}`} />
+              <FlagIcon className={`h-5 w-5 transition-transform ${attempt?.flagged ? "fill-current scale-110" : ""}`} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={openNoteEditor}
-              className={hasSavedNote ? "text-primary" : "text-muted-foreground"}
+              className={`transition-colors ${hasSavedNote ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}`}
               aria-label="メモを編集"
             >
               <PencilIcon className="h-5 w-5" />
@@ -141,88 +151,92 @@ export function QuestionDisplay({
           </div>
         </div>
 
-        <div className="mt-3 space-y-2">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="relative h-2 flex-1">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
-              </div>
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-muted">
+              <div 
+                className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out" 
+                style={{ width: `${progressPct}%` }} 
+              />
               {/* Current position marker */}
               <div
-                className="pointer-events-none absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/50"
+                className="pointer-events-none absolute top-1/2 h-5 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/60 shadow-sm"
                 style={{ left: `${positionPct}%` }}
                 aria-hidden="true"
               />
             </div>
-            <span className="shrink-0 tabular-nums">
+            <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
               {answeredQuestions}/{totalQuestions}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span>
-              正解 <span className="font-medium text-foreground">{correctAnswers}</span>
-            </span>
-            <span>
-              不正解 <span className="font-medium text-foreground">{incorrectAnswers}</span>
-            </span>
-            {unknownAnswers > 0 && (
-              <span>
-                正誤不明 <span className="font-medium text-foreground">{unknownAnswers}</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-success" />
+              <span className="text-xs text-muted-foreground">
+                正解 <span className="font-semibold text-success">{correctAnswers}</span>
               </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-destructive" />
+              <span className="text-xs text-muted-foreground">
+                不正解 <span className="font-semibold text-destructive">{incorrectAnswers}</span>
+              </span>
+            </div>
+            {unknownAnswers > 0 && (
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-warning" />
+                <span className="text-xs text-muted-foreground">
+                  正誤不明 <span className="font-semibold text-warning">{unknownAnswers}</span>
+                </span>
+              </div>
             )}
-            <span>
-              正答率 <span className="font-medium text-foreground">{accuracyRate}%</span>
-            </span>
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-primary" />
+              <span className="text-xs text-muted-foreground">
+                正答率 <span className="font-semibold text-primary">{accuracyRate}%</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Question text */}
-      <div>
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-            問題 {questionNumber} / {totalQuestions}
-          </span>
-          {isMultiple && (
-            <span className="rounded-md bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
-              複数選択
-            </span>
-          )}
-        </div>
-          {/* Note Editor (opened by pencil icon) */}
-          {isNoteEditing && (
-            <Card className="mb-3 p-4">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <Label htmlFor="note" className="block text-sm font-medium">
-                  メモ
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={cancelNote}>
-                    キャンセル
-                  </Button>
-                  <Button size="sm" onClick={saveNote}>
-                    保存
-                  </Button>
-                </div>
+      <div className="space-y-4">
+        {/* Note Editor (opened by pencil icon) */}
+        {isNoteEditing && (
+          <Card className="border-primary/30 bg-primary/5 p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <Label htmlFor="note" className="text-sm font-semibold">
+                メモ
+              </Label>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={cancelNote}>
+                  キャンセル
+                </Button>
+                <Button size="sm" onClick={saveNote}>
+                  保存
+                </Button>
               </div>
-              <Textarea
-                id="note"
-                placeholder="メモを入力..."
-                value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    saveNote();
-                  }
-                }}
-                rows={4}
-                autoFocus
-              />
-              <p className="mt-2 text-xs text-muted-foreground">Ctrl+Enter / Cmd+Enter で保存</p>
-            </Card>
-          )}
-          <h2 className="whitespace-pre-wrap text-lg font-medium leading-relaxed">{question.text}</h2>
+            </div>
+            <Textarea
+              id="note"
+              placeholder="メモを入力..."
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  saveNote();
+                }
+              }}
+              rows={4}
+              autoFocus
+              className="resize-none"
+            />
+            <p className="mt-2 text-xs text-muted-foreground">Ctrl+Enter / Cmd+Enter で保存</p>
+          </Card>
+        )}
+        <h2 className="whitespace-pre-wrap text-xl font-semibold leading-relaxed tracking-tight">{question.text}</h2>
       </div>
 
       {/* Choices */}
@@ -237,38 +251,39 @@ export function QuestionDisplay({
               type="button"
               onClick={() => handleChoiceClick(choice.id)}
               disabled={isAnswered}
-              className={`w-full rounded-lg border-2 p-4 text-left transition-all ${
+              className={`group relative w-full rounded-xl border-2 p-5 text-left transition-all duration-200 ${
                 status === "correct"
-                  ? "border-success bg-success/10"
+                  ? "border-success bg-success/10 shadow-sm shadow-success/20"
                   : status === "incorrect"
-                    ? "border-destructive bg-destructive/10"
+                    ? "border-destructive bg-destructive/10 shadow-sm shadow-destructive/20"
                     : isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-card hover:border-primary/50"
-              } ${isAnswered ? "cursor-default" : "cursor-pointer"}`}
+                      ? "border-primary bg-primary/10 shadow-sm shadow-primary/10 hover:border-primary/80"
+                      : "border-border bg-card hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm"
+              } ${isAnswered ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-4">
                 <div
-                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                    isMultiple ? "rounded-sm" : "rounded-full"
+                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded transition-all ${
+                    isMultiple ? "rounded-md" : "rounded-full"
                   } border-2 ${
                     status === "correct"
-                      ? "border-success bg-success"
+                      ? "border-success bg-success shadow-sm"
                       : status === "incorrect"
-                        ? "border-destructive bg-destructive"
+                        ? "border-destructive bg-destructive shadow-sm"
                         : isSelected
-                          ? "border-primary bg-primary"
-                          : "border-muted-foreground"
+                          ? "border-primary bg-primary shadow-sm"
+                          : "border-muted-foreground/50 group-hover:border-primary/50"
                   }`}
                 >
                   {isSelected && status === "default" && (
-                    <div className="h-2 w-2 rounded-full bg-white" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-white shadow-sm" />
                   )}
                   {status === "correct" && <CheckCircle2Icon className="h-4 w-4 text-white" />}
                   {status === "incorrect" && <XCircleIcon className="h-4 w-4 text-white" />}
                 </div>
                 <span className="flex-1 leading-relaxed">
-                  <span className="font-semibold">{choice.id}</span> {choice.text}
+                  <span className="font-bold text-base">{choice.id}.</span>{" "}
+                  <span className="text-base">{choice.text}</span>
                 </span>
               </div>
             </button>
@@ -278,7 +293,12 @@ export function QuestionDisplay({
 
       {/* Submit Button */}
       {!isAnswered && (
-        <Button onClick={handleSubmit} disabled={selectedChoiceIds.length === 0} className="w-full" size="lg">
+        <Button 
+          onClick={handleSubmit} 
+          disabled={selectedChoiceIds.length === 0} 
+          className="w-full h-12 text-base font-semibold shadow-md transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" 
+          size="lg"
+        >
           回答を送信
         </Button>
       )}
@@ -286,55 +306,73 @@ export function QuestionDisplay({
       {/* Answer Status */}
       {isAnswered && attempt && (
         <Card
-          className={`border-2 p-4 ${
+          className={`border-2 p-5 shadow-sm transition-all ${
             attempt.isCorrect
-              ? "border-success bg-success/5"
+              ? "border-success/50 bg-success/10"
               : attempt.isCorrect === false
-                ? "border-destructive bg-destructive/5"
-                : "border-muted"
+                ? "border-destructive/50 bg-destructive/10"
+                : "border-muted bg-muted/30"
           }`}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {attempt.isCorrect ? (
               <>
-                <CheckCircle2Icon className="h-5 w-5 text-success" />
-                <span className="font-medium text-success">正解です！</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success shadow-sm">
+                  <CheckCircle2Icon className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <span className="text-lg font-semibold text-success">正解です！</span>
+                  {question.answer_choice_ids && question.answer_choice_ids.length > 0 && (
+                    <div className="mt-1 text-sm text-success/80">
+                      <span className="font-medium">正答:</span> {question.answer_choice_ids.join(", ")}
+                    </div>
+                  )}
+                </div>
               </>
             ) : attempt.isCorrect === false ? (
               <>
-                <XCircleIcon className="h-5 w-5 text-destructive" />
-                <span className="font-medium text-destructive">不正解です</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-destructive shadow-sm">
+                  <XCircleIcon className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <span className="text-lg font-semibold text-destructive">不正解です</span>
+                  {question.answer_choice_ids && question.answer_choice_ids.length > 0 && (
+                    <div className="mt-1 text-sm text-destructive/80">
+                      <span className="font-medium">正答:</span> {question.answer_choice_ids.join(", ")}
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
-              <span className="font-medium text-muted-foreground">正誤不明（この問題セットに正答が含まれていません）</span>
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shadow-sm">
+                  <span className="text-sm font-bold text-muted-foreground">?</span>
+                </div>
+                <span className="text-base font-medium text-muted-foreground">
+                  正誤不明（この問題セットに正答が含まれていません）
+                </span>
+              </div>
             )}
           </div>
-          {question.answer_choice_ids && question.answer_choice_ids.length > 0 && (
-            <div className="mt-2 text-sm text-muted-foreground">
-              <span className="font-medium">正答:</span> {question.answer_choice_ids.join(", ")}
-            </div>
-          )}
         </Card>
       )}
 
       {/* Explanation */}
       {isAnswered && question.explanation && (
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className="border-primary/30 bg-primary/5 shadow-sm">
           <button
             type="button"
             onClick={() => setShowExplanation(!showExplanation)}
-            className="flex w-full items-center justify-between p-4 text-left"
+            className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-primary/10 rounded-t-lg"
           >
-            <span className="font-medium">解説</span>
-            {showExplanation ? (
-              <ChevronUpIcon className="h-5 w-5 text-muted-foreground" />
-            ) : (
+            <span className="font-semibold text-base">解説</span>
+            <div className={`transition-transform duration-200 ${showExplanation ? "rotate-180" : ""}`}>
               <ChevronDownIcon className="h-5 w-5 text-muted-foreground" />
-            )}
+            </div>
           </button>
           {showExplanation && (
-            <div className="border-t border-border px-4 pb-4 pt-3">
-              <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
+            <div className="border-t border-primary/20 px-5 pb-5 pt-4 animate-in slide-in-from-top-2 duration-200">
+              <p className="whitespace-pre-wrap leading-relaxed text-base text-foreground/90">
                 {question.explanation}
               </p>
             </div>
@@ -344,7 +382,11 @@ export function QuestionDisplay({
 
       {/* Reset Button */}
       {isAnswered && (
-        <Button variant="outline" onClick={handleReset} className="w-full bg-transparent">
+        <Button 
+          variant="outline" 
+          onClick={handleReset} 
+          className="w-full h-11 bg-transparent hover:bg-muted/50 transition-all"
+        >
           未回答に戻す
         </Button>
       )}

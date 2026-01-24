@@ -47,8 +47,8 @@ function ResultDonutChart(props: {
   const hasAny = props.total > 0 && arcs.some((a) => a.pct > 0);
 
   return (
-    <div className="flex items-center gap-6">
-      <div className="relative h-40 w-40 shrink-0">
+    <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-center">
+      <div className="relative h-48 w-48 shrink-0">
         <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
           {/* Track */}
           <circle
@@ -58,15 +58,15 @@ function ResultDonutChart(props: {
             pathLength={100}
             fill="none"
             stroke="currentColor"
-            strokeWidth="4"
-            className="text-muted"
+            strokeWidth="3.5"
+            className="text-muted/30"
           />
 
           {/* Segments */}
           {hasAny &&
             arcs
               .filter((a) => a.pct > 0)
-              .map((a) => (
+              .map((a, index) => (
                 <circle
                   key={a.label}
                   cx="18"
@@ -75,30 +75,33 @@ function ResultDonutChart(props: {
                   pathLength={100}
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="4"
-                  strokeLinecap="butt"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
                   strokeDasharray={`${a.pct} ${100 - a.pct}`}
                   strokeDashoffset={-a.offset}
                   className={a.className}
+                  style={{
+                    animation: `fadeIn 0.5s ease-out ${index * 0.1}s both`,
+                  }}
                 />
               ))}
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-xs text-muted-foreground">{props.centerLabel}</div>
-            <div className="text-2xl font-semibold">{props.centerValue}</div>
+            <div className="text-sm font-medium text-muted-foreground">{props.centerLabel}</div>
+            <div className="text-3xl font-bold mt-1">{props.centerValue}</div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 w-full space-y-3">
         {props.segments.map((s) => (
-          <div key={s.label} className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 rounded-full ${s.dotClassName}`} />
-              <span className="text-muted-foreground">{s.label}</span>
+          <div key={s.label} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <span className={`h-3 w-3 rounded-full ${s.dotClassName} shadow-sm`} />
+              <span className="text-base font-medium">{s.label}</span>
             </div>
-            <span className="font-medium">{s.value}</span>
+            <span className="text-lg font-bold tabular-nums">{s.value}</span>
           </div>
         ))}
       </div>
@@ -136,13 +139,13 @@ export function ResultsScreen(props: {
   ];
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">結果</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{props.title}</p>
+    <div className="mx-auto max-w-4xl px-6 py-10">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">結果</h1>
+        <p className="mt-2 text-base text-muted-foreground">{props.title}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-3 mb-8">
         <StatsCard
           title="回答数"
           value={`${props.answeredQuestions}/${props.totalQuestions}`}
@@ -153,26 +156,26 @@ export function ResultsScreen(props: {
           title="正解数"
           value={props.correctAnswers}
           icon={CheckCircle2Icon}
-          className="border-success/20 bg-success/5"
+          className="border-success/30 bg-success/10 shadow-sm"
         />
         <StatsCard
           title="正答率"
           value={`${props.accuracyRate}%`}
           icon={TrendingUpIcon}
-          className="border-primary/20 bg-primary/5"
+          className="border-primary/30 bg-primary/10 shadow-sm"
           description="（正誤判定できる回答の中での正答率）"
         />
       </div>
 
-      <div className="mt-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <XCircleIcon className="h-5 w-5 text-muted-foreground" />
+      <div className="mb-8">
+        <Card className="border-2 shadow-md">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <XCircleIcon className="h-6 w-6 text-muted-foreground" />
               内訳
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             <ResultDonutChart
               segments={segments}
               total={props.totalQuestions}
@@ -183,11 +186,20 @@ export function ResultsScreen(props: {
         </Card>
       </div>
 
-      <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <Button variant="outline" className="bg-transparent" onClick={props.onBackToExam}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <Button 
+          variant="outline" 
+          className="bg-transparent h-11 hover:bg-muted/50 transition-all" 
+          onClick={props.onBackToExam}
+        >
           問題に戻る
         </Button>
-        <Button onClick={props.onBackToHome}>ホームに戻る</Button>
+        <Button 
+          className="h-11 shadow-md hover:shadow-lg transition-all" 
+          onClick={props.onBackToHome}
+        >
+          ホームに戻る
+        </Button>
       </div>
     </div>
   );
