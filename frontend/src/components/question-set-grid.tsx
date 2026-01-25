@@ -27,11 +27,14 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [cloudItems, setCloudItems] = useState<CloudQuestionSet[]>([]);
   const [cloudLoading, setCloudLoading] = useState<boolean>(false);
+  const [cloudQuestionCounts, setCloudQuestionCounts] = useState<Record<string, number>>({});
+  const [cloudQuestionCountLoading, setCloudQuestionCountLoading] = useState<Record<string, boolean>>({});
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [uploadSetId, setUploadSetId] = useState<string>("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadJsonText, setUploadJsonText] = useState<string>("");
+  const [sampleQuestionCount, setSampleQuestionCount] = useState<number | null>(null);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -41,11 +44,30 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
     });
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/examples/questions.sample.json", { cache: "no-store" });
+        if (!res.ok) return;
+        const text = await res.text();
+        const loaded = loadQuestionSetFromJsonText(text);
+        if (!cancelled) setSampleQuestionCount(loaded.questions.length);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function refreshCloudList() {
     const base = apiBaseUrl();
     if (!base) return;
     if (!isLoggedIn) return;
     setCloudLoading(true);
+    setError("");
     try {
       const res = await fetch(`${base.replace(/\/$/, "")}/question-sets`, { headers: { ...(await authHeader()) } });
       if (!res.ok) throw new Error(`list failed: ${res.status}`);
@@ -53,6 +75,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       setCloudItems(Array.isArray(data.items) ? data.items : []);
     } catch (e) {
       console.error("Failed to refresh cloud list:", e);
+      setError(`クラウド一覧の更新に失敗しました: ${e instanceof Error ? e.message : "不明なエラー"}`);
     } finally {
       setCloudLoading(false);
     }
@@ -63,6 +86,45 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
     refreshCloudList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail]);
+
+  async function fetchCloudQuestionCount(setId: string) {
+    const base = apiBaseUrl();
+    if (!base) return;
+    if (!isLoggedIn) return;
+    if (cloudQuestionCounts[setId] !== undefined) return;
+    if (cloudQuestionCountLoading[setId]) return;
+
+    setCloudQuestionCountLoading((prev) => ({ ...prev, [setId]: true }));
+    try {
+      const res = await fetch(
+        `${base.replace(/\/$/, "")}/question-sets/download-url?setId=${encodeURIComponent(setId)}`,
+        { headers: { ...(await authHeader()) } },
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as { downloadUrl: string };
+      if (!data.downloadUrl) return;
+
+      const jsonRes = await fetch(data.downloadUrl, { cache: "no-store" });
+      if (!jsonRes.ok) return;
+      const text = await jsonRes.text();
+      const loaded = loadQuestionSetFromJsonText(text);
+      setCloudQuestionCounts((prev) => ({ ...prev, [setId]: loaded.questions.length }));
+    } catch {
+      // ignore
+    } finally {
+      setCloudQuestionCountLoading((prev) => ({ ...prev, [setId]: false }));
+    }
+  }
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (cloudItems.length === 0) return;
+    cloudItems.forEach((it) => {
+      void fetchCloudQuestionCount(it.setId);
+    });
+    // Intentionally omit fetchCloudQuestionCount from deps to avoid reruns on state updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, cloudItems]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -213,6 +275,18 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       );
       if (!res.ok) throw new Error(`delete failed: ${res.status}`);
       setUploadStatus("削除しました");
+      // Optimistically remove from UI even if list refresh fails.
+      setCloudItems((prev) => prev.filter((it) => it.setId !== setId));
+      setCloudQuestionCounts((prev) => {
+        const next = { ...prev };
+        delete next[setId];
+        return next;
+      });
+      setCloudQuestionCountLoading((prev) => {
+        const next = { ...prev };
+        delete next[setId];
+        return next;
+      });
       await refreshCloudList();
     } catch (e) {
       setUploadStatus(e instanceof Error ? e.message : "削除に失敗しました");
@@ -240,21 +314,6 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
             <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               アカウント
             </Link>
-            {isLoggedIn && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowUploadModal(true);
-                  setError("");
-                  setUploadStatus("");
-                }}
-                className="shadow-sm hover:shadow-md transition-all"
-              >
-                <PlusIcon className="mr-2 h-4 w-4" />
-                アップロード
-              </Button>
-            )}
           </div>
         </div>
       </div>
@@ -264,6 +323,11 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         {error && (
           <div className="mb-6 rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-sm text-destructive shadow-sm">
             {error}
+          </div>
+        )}
+        {uploadStatus && (
+          <div className="mb-6 rounded-lg bg-muted/50 border border-border p-4 text-sm text-foreground shadow-sm">
+            {uploadStatus}
           </div>
         )}
 
@@ -284,6 +348,9 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">デモ用のサンプル問題集を試すことができます</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                問題数: {sampleQuestionCount !== null ? `${sampleQuestionCount}問` : "読み込み中..."}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -292,7 +359,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         {isLoggedIn && (
           <div>
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-xl font-bold tracking-tight">クラウドの問題集</h2>
+              <h2 className="text-xl font-bold tracking-tight">自分の問題集</h2>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -303,59 +370,73 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                 {cloudLoading ? "読み込み中..." : "更新"}
               </Button>
             </div>
-            {cloudItems.length === 0 ? (
-              <Card className="border-2 border-dashed">
-                <CardContent className="py-12 text-center">
-                  <BookOpenIcon className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground">
-                    クラウドに問題セットがありません。<br />
-                    アップロードボタンから問題集を追加してください。
-                  </p>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {/* Upload card (always first) */}
+              <Card
+                className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 border-dashed group flex flex-col"
+                onClick={() => {
+                  setShowUploadModal(true);
+                  setError("");
+                  setUploadStatus("");
+                }}
+              >
+                <CardContent className="flex flex-1 flex-col items-center justify-center !p-6 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    <PlusIcon className="h-7 w-7 text-primary" />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold">アップロード</p>
+                  <p className="mt-1 text-xs text-muted-foreground">JSONの問題集を追加</p>
                 </CardContent>
               </Card>
-            ) : (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {cloudItems.map((item) => (
-                  <Card
-                    key={item.setId}
-                    className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group"
-                    onClick={() => loadFromCloud(item.setId)}
-                  >
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-3 truncate text-base">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
-                          <BookOpenIcon className="h-5 w-5 text-primary" />
-                        </div>
-                        <span className="truncate" title={item.setId}>
-                          {item.setId}
-                        </span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs text-muted-foreground">
-                          最終更新: {formatDate(item.lastModified)}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-destructive hover:text-destructive"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            deleteFromCloud(item.setId);
-                          }}
-                          aria-label={`delete ${item.setId}`}
-                        >
-                          <XCircleIcon className="mr-1 h-4 w-4" />
-                          削除
-                        </Button>
+
+              {cloudItems.map((item) => (
+                <Card
+                  key={item.setId}
+                  className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group"
+                  onClick={() => loadFromCloud(item.setId)}
+                >
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-3 truncate text-base">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
+                        <BookOpenIcon className="h-5 w-5 text-primary" />
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+                      <span className="truncate" title={item.setId}>
+                        {item.setId}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          問題数:{" "}
+                          {cloudQuestionCounts[item.setId] !== undefined
+                            ? `${cloudQuestionCounts[item.setId]}問`
+                            : cloudQuestionCountLoading[item.setId]
+                              ? "読み込み中..."
+                              : "読み込み中..."}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">最終更新: {formatDate(item.lastModified)}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          deleteFromCloud(item.setId);
+                        }}
+                        aria-label={`delete ${item.setId}`}
+                      >
+                        <XCircleIcon className="mr-1 h-4 w-4" />
+                        削除
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
 

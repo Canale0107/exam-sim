@@ -1,6 +1,12 @@
 locals {
   cognito_issuer = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.this.id}"
-  cors_origins   = [for o in var.callback_urls : trimsuffix(o, "/")]
+  # CORS allow-origins must match the browser Origin exactly (no trailing slash).
+  # We derive from callback URLs, but also keep localhost enabled for local dev even
+  # if the deployed environment overrides callback_urls to production-only values.
+  cors_origins = distinct(concat(
+    [for o in var.callback_urls : trimsuffix(o, "/")],
+    ["http://localhost:3000"],
+  ))
 }
 
 resource "aws_apigatewayv2_api" "http" {
