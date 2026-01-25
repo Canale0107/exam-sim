@@ -164,5 +164,17 @@ def handler(event, context):
             },
         )
 
+    # DELETE /question-sets?setId=...
+    if method == "DELETE" and path.endswith("/question-sets"):
+        qs = event.get("queryStringParameters") or {}
+        set_id = validate_set_id(qs.get("setId") if isinstance(qs, dict) else "")
+        if not set_id:
+            return response(400, {"message": "invalid setId"})
+
+        key = f"question-sets/{sub}/{set_id}.json"
+        # delete is idempotent
+        s3.delete_object(Bucket=bucket, Key=key)
+        return response(200, {"ok": True, "setId": set_id})
+
     return response(404, {"message": "not found"})
 

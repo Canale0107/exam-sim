@@ -110,5 +110,18 @@ def handler(event, context):
 
         return response(200, {"ok": True, "setId": set_id, "updatedAt": updated_at})
 
+    if method == "DELETE":
+        qs = event.get("queryStringParameters") or {}
+        set_id = (qs.get("setId") or "").strip()
+        if not set_id:
+            return response(400, {"message": "missing setId"})
+
+        pk = f"USER#{sub}"
+        sk = f"SET#{set_id}"
+
+        # Delete is idempotent: ok even if item didn't exist
+        table.delete_item(Key={"pk": pk, "sk": sk})
+        return response(200, {"ok": True, "setId": set_id})
+
     return response(405, {"message": "method not allowed"})
 

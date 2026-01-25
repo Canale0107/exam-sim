@@ -29,7 +29,8 @@ resource "aws_iam_role_policy" "lambda_question_sets_s3" {
         Effect = "Allow"
         Action = [
           "s3:GetObject",
-          "s3:PutObject"
+          "s3:PutObject",
+          "s3:DeleteObject"
         ]
         Resource = "${aws_s3_bucket.question_sets.arn}/*"
       }

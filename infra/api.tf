@@ -10,7 +10,7 @@ resource "aws_apigatewayv2_api" "http" {
   cors_configuration {
     allow_credentials = true
     allow_headers     = ["authorization", "content-type"]
-    allow_methods     = ["GET", "PUT", "POST", "OPTIONS"]
+    allow_methods     = ["GET", "PUT", "POST", "DELETE", "OPTIONS"]
     allow_origins     = local.cors_origins
   }
 }
@@ -86,6 +86,16 @@ resource "aws_apigatewayv2_route" "progress_put" {
   target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
 }
 
+resource "aws_apigatewayv2_route" "progress_delete" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "DELETE /progress"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
+}
+
 resource "aws_lambda_permission" "allow_apigw_invoke_progress" {
   statement_id  = "AllowExecutionFromAPIGatewayV2Progress"
   action        = "lambda:InvokeFunction"
@@ -114,6 +124,16 @@ resource "aws_apigatewayv2_route" "question_sets_upload_url" {
 resource "aws_apigatewayv2_route" "question_sets_list" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = "GET /question-sets"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_question_sets.id}"
+}
+
+resource "aws_apigatewayv2_route" "question_sets_delete" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "DELETE /question-sets"
 
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id

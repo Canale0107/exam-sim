@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
-import { BookOpenIcon, UploadIcon, PlusIcon } from "@/components/icons";
+import { BookOpenIcon, UploadIcon, PlusIcon, XCircleIcon } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl, authHeader, getCurrentUser, isCognitoConfigured } from "@/lib/awsAuth";
@@ -191,6 +191,34 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
     }
   };
 
+  async function deleteFromCloud(setId: string) {
+    setUploadStatus("");
+    const base = apiBaseUrl();
+    if (!base) {
+      setUploadStatus("API_BASE_URL が未設定です（frontend/.env.local）。");
+      return;
+    }
+    if (!isLoggedIn) {
+      setUploadStatus("ログインしてください（/auth）。");
+      return;
+    }
+    const ok = confirm(`クラウドから「${setId}」を削除しますか？（復元できません）`);
+    if (!ok) return;
+
+    try {
+      setUploadStatus("削除中...");
+      const res = await fetch(
+        `${base.replace(/\/$/, "")}/question-sets?setId=${encodeURIComponent(setId)}`,
+        { method: "DELETE", headers: { ...(await authHeader()) } },
+      );
+      if (!res.ok) throw new Error(`delete failed: ${res.status}`);
+      setUploadStatus("削除しました");
+      await refreshCloudList();
+    } catch (e) {
+      setUploadStatus(e instanceof Error ? e.message : "削除に失敗しました");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -304,9 +332,25 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-xs text-muted-foreground">
-                        最終更新: {formatDate(item.lastModified)}
-                      </p>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs text-muted-foreground">
+                          最終更新: {formatDate(item.lastModified)}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-destructive hover:text-destructive"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            deleteFromCloud(item.setId);
+                          }}
+                          aria-label={`delete ${item.setId}`}
+                        >
+                          <XCircleIcon className="mr-1 h-4 w-4" />
+                          削除
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}

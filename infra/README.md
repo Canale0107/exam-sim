@@ -89,6 +89,14 @@ curl -sS \
   "<http_api_progress_url>?setId=example-set" | jq
 ```
 
+`setId` を削除（リセット）:
+
+```bash
+curl -sS -X DELETE \
+  -H "Authorization: Bearer ${ID_TOKEN}" \
+  "<http_api_progress_url>?setId=example-set" | jq
+```
+
 ## 問題セットAPIの簡易テスト（S3 + 署名付きURL）
 
 1. 一覧を取得:
@@ -132,4 +140,12 @@ DOWNLOAD="$(
 )"
 GET_URL="$(echo "$DOWNLOAD" | jq -r .downloadUrl)"
 curl -sS "$GET_URL" | jq '.set_id'
+```
+
+1. 問題セットを削除（S3から削除）:
+
+```bash
+curl -sS -X DELETE \
+  -H "Authorization: Bearer ${ID_TOKEN}" \
+  "<http_api_question_sets_list_url>?setId=example-set" | jq
 ```

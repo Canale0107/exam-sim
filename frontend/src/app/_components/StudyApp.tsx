@@ -92,6 +92,7 @@ export function StudyApp() {
   const [progress, setProgress] = useState<ProgressState>(emptyProgressState());
   const [view, setView] = useState<"exam" | "results">("exam");
   const isLoadingRemoteRef = useRef(false);
+  const skipNextRemoteSaveRef = useRef(false);
 
   const userId = authUser?.id ?? "local";
 
@@ -213,6 +214,10 @@ export function StudyApp() {
     
     // Don't save to remote while loading from remote to avoid race conditions
     if (isLoadingRemoteRef.current) return;
+    if (skipNextRemoteSaveRef.current) {
+      skipNextRemoteSaveRef.current = false;
+      return;
+    }
     
     const url = `${base.replace(/\/$/, "")}/progress`;
     (async () => {
@@ -293,7 +298,22 @@ export function StudyApp() {
     if (!qset) return;
     if (confirm("進捗をリセットしてもよろしいですか？この操作は取り消せません。")) {
       clearProgress({ userId, setId: qset.set_id });
+      // Prevent an immediate remote PUT right after reset.
+      skipNextRemoteSaveRef.current = true;
       setProgress(emptyProgressState());
+
+      const base = apiBaseUrl();
+      if (!base) return;
+      if (userId === "local") return;
+
+      const url = `${base.replace(/\/$/, "")}/progress?setId=${encodeURIComponent(qset.set_id)}`;
+      (async () => {
+        try {
+          await fetch(url, { method: "DELETE", headers: { ...(await authHeader()) } });
+        } catch {
+          // ignore
+        }
+      })();
     }
   }
 
