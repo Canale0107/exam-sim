@@ -10,6 +10,8 @@ interface ExamSidebarProps {
   questionSet: QuestionSet;
   progress: ProgressState;
   currentQuestionIndex: number;
+  trialNumber: number | null;
+  isReadOnly: boolean;
   onQuestionSelect: (index: number) => void;
   onReset: () => void;
   onBackToHome: () => void;
@@ -19,12 +21,28 @@ export function ExamSidebar({
   questionSet,
   progress,
   currentQuestionIndex,
+  trialNumber,
+  isReadOnly,
   onQuestionSelect,
   onReset,
   onBackToHome,
 }: ExamSidebarProps) {
   return (
     <div className="flex h-full flex-col bg-sidebar">
+      {/* Trial Header */}
+      {trialNumber !== null && (
+        <div className="border-b border-sidebar-border px-6 py-4">
+          <div className={`text-sm font-medium px-3 py-1.5 rounded-lg text-center ${
+            isReadOnly
+              ? "bg-success/10 text-success"
+              : "bg-primary/10 text-primary"
+          }`}>
+            トライアル #{trialNumber}
+            {isReadOnly && " (閲覧のみ)"}
+          </div>
+        </div>
+      )}
+
       <ScrollArea className="flex-1">
         <div className="p-6">
           <h3 className="mb-4 text-sm font-semibold text-sidebar-foreground uppercase tracking-wide">問題一覧</h3>
@@ -64,17 +82,19 @@ export function ExamSidebar({
 
       <div className="border-t border-sidebar-border p-6 bg-sidebar-accent/30">
         <div className="space-y-2.5">
-          <Button 
-            variant="outline" 
-            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md" 
+          <Button
+            variant="outline"
+            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md disabled:opacity-50"
             onClick={onReset}
+            disabled={isReadOnly}
+            title={isReadOnly ? "完了済みトライアルはリセットできません" : undefined}
           >
             <RotateCcwIcon className="mr-2 h-4 w-4" />
             進捗をリセット
           </Button>
-          <Button 
-            variant="outline" 
-            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md" 
+          <Button
+            variant="outline"
+            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"
             onClick={onBackToHome}
           >
             <HomeIcon className="mr-2 h-4 w-4" />
@@ -85,4 +105,3 @@ export function ExamSidebar({
     </div>
   );
 }
-

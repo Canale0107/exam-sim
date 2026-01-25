@@ -26,6 +26,7 @@ interface QuestionDisplayProps {
   unknownAnswers: number;
   accuracyRate: number;
   attempt?: Attempt;
+  isReadOnly?: boolean;
   onAnswerSubmit: (selectedChoiceIds: string[]) => void;
   onFlagToggle: (flagged: boolean) => void;
   onNoteChange: (note: string) => void;
@@ -42,6 +43,7 @@ export function QuestionDisplay({
   unknownAnswers,
   accuracyRate,
   attempt,
+  isReadOnly = false,
   onAnswerSubmit,
   onFlagToggle,
   onNoteChange,
@@ -64,7 +66,7 @@ export function QuestionDisplay({
       : 0;
 
   const handleChoiceClick = (choiceId: string) => {
-    if (isAnswered) return;
+    if (isAnswered || isReadOnly) return;
 
     if (isMultiple) {
       setSelectedChoiceIds((prev) =>
@@ -250,7 +252,7 @@ export function QuestionDisplay({
               key={choice.id}
               type="button"
               onClick={() => handleChoiceClick(choice.id)}
-              disabled={isAnswered}
+              disabled={isAnswered || isReadOnly}
               className={`group relative w-full rounded-xl border-2 p-5 text-left transition-all duration-200 ${
                 status === "correct"
                   ? "border-success bg-success/10 shadow-sm shadow-success/20"
@@ -259,7 +261,7 @@ export function QuestionDisplay({
                     : isSelected
                       ? "border-primary bg-primary/10 shadow-sm shadow-primary/10 hover:border-primary/80"
                       : "border-border bg-card hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm"
-              } ${isAnswered ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
+              } ${isAnswered || isReadOnly ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
             >
               <div className="flex items-start gap-4">
                 <div
@@ -292,11 +294,11 @@ export function QuestionDisplay({
       </div>
 
       {/* Submit Button */}
-      {!isAnswered && (
-        <Button 
-          onClick={handleSubmit} 
-          disabled={selectedChoiceIds.length === 0} 
-          className="w-full h-12 text-base font-semibold shadow-md transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" 
+      {!isAnswered && !isReadOnly && (
+        <Button
+          onClick={handleSubmit}
+          disabled={selectedChoiceIds.length === 0}
+          className="w-full h-12 text-base font-semibold shadow-md transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           size="lg"
         >
           回答を送信
@@ -381,10 +383,10 @@ export function QuestionDisplay({
       )}
 
       {/* Reset Button */}
-      {isAnswered && (
-        <Button 
-          variant="outline" 
-          onClick={handleReset} 
+      {isAnswered && !isReadOnly && (
+        <Button
+          variant="outline"
+          onClick={handleReset}
           className="w-full h-11 bg-transparent hover:bg-muted/50 transition-all"
         >
           未回答に戻す

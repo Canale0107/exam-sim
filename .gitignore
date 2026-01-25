@@ -14,6 +14,7 @@ venv/
 tmp/
 output/
 .cursor/
+.claude/
 
 # Terraform
 .terraform/

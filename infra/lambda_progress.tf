@@ -16,7 +16,8 @@ resource "aws_iam_role_policy" "lambda_progress_ddb" {
         Action = [
           "dynamodb:GetItem",
           "dynamodb:PutItem",
-          "dynamodb:DeleteItem"
+          "dynamodb:DeleteItem",
+          "dynamodb:Query"
         ]
         Resource = aws_dynamodb_table.progress.arn
       }
