@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
-import { BookOpenIcon, UploadIcon, PlusIcon, XCircleIcon } from "@/components/icons";
+import { BookOpenIcon, RotateCcwIcon, UploadIcon, PlusIcon, XCircleIcon } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl, authHeader, getCurrentUser, isCognitoConfigured } from "@/lib/awsAuth";
@@ -362,12 +362,14 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
               <h2 className="text-xl font-bold tracking-tight">自分の問題集</h2>
               <Button 
                 variant="outline" 
-                size="sm" 
+                size="icon"
                 onClick={refreshCloudList} 
                 disabled={cloudLoading}
-                className="shadow-sm hover:shadow-md transition-all"
+                className="h-9 w-9 shadow-sm hover:shadow-md transition-all"
+                aria-label="更新"
               >
-                {cloudLoading ? "読み込み中..." : "更新"}
+                <RotateCcwIcon className={`h-4 w-4 ${cloudLoading ? "animate-spin" : ""}`} />
+                <span className="sr-only">{cloudLoading ? "更新中" : "更新"}</span>
               </Button>
             </div>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -392,10 +394,24 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
               {cloudItems.map((item) => (
                 <Card
                   key={item.setId}
-                  className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group"
+                  className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group relative"
                   onClick={() => loadFromCloud(item.setId)}
                 >
-                  <CardHeader className="pb-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-3 top-3 h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      deleteFromCloud(item.setId);
+                    }}
+                    aria-label={`delete ${item.setId}`}
+                  >
+                    <XCircleIcon className="h-4 w-4" />
+                  </Button>
+                  <CardHeader className="pb-3 pr-12">
                     <CardTitle className="flex items-center gap-3 truncate text-base">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
                         <BookOpenIcon className="h-5 w-5 text-primary" />
@@ -406,32 +422,16 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          問題数:{" "}
-                          {cloudQuestionCounts[item.setId] !== undefined
-                            ? `${cloudQuestionCounts[item.setId]}問`
-                            : cloudQuestionCountLoading[item.setId]
-                              ? "読み込み中..."
-                              : "読み込み中..."}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">最終更新: {formatDate(item.lastModified)}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 text-destructive hover:text-destructive"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          deleteFromCloud(item.setId);
-                        }}
-                        aria-label={`delete ${item.setId}`}
-                      >
-                        <XCircleIcon className="mr-1 h-4 w-4" />
-                        削除
-                      </Button>
+                    <div className="min-w-0">
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        問題数:{" "}
+                        {cloudQuestionCounts[item.setId] !== undefined
+                          ? `${cloudQuestionCounts[item.setId]}問`
+                          : cloudQuestionCountLoading[item.setId]
+                            ? "読み込み中..."
+                            : "読み込み中..."}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">最終更新: {formatDate(item.lastModified)}</p>
                     </div>
                   </CardContent>
                 </Card>
