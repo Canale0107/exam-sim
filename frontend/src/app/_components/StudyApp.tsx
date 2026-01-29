@@ -638,7 +638,6 @@ export function StudyApp() {
           {view === "exam" ? (
             <div className="mx-auto max-w-3xl px-6 py-10">
               <QuestionDisplay
-                key={current.question.id}
                 question={current.question}
                 questionNumber={current.index + 1}
                 totalQuestions={qset.questions.length}

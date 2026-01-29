@@ -54,6 +54,17 @@ export function QuestionDisplay({
   const [isNoteEditing, setIsNoteEditing] = useState(false);
   const [noteDraft, setNoteDraft] = useState<string>("");
 
+  // Reset state when question changes
+  const questionId = question.id;
+  const [prevQuestionId, setPrevQuestionId] = useState(questionId);
+  if (questionId !== prevQuestionId) {
+    setPrevQuestionId(questionId);
+    setSelectedChoiceIds(attempt?.selectedChoiceIds ?? []);
+    setShowExplanation(false);
+    setIsNoteEditing(false);
+    setNoteDraft("");
+  }
+
   const isAnswered = (attempt?.selectedChoiceIds?.length ?? 0) > 0;
   const isMultiple = question.is_multi_select ?? Boolean((question.answer_choice_ids?.length ?? 0) > 1);
   const progressPct =
@@ -155,7 +166,7 @@ export function QuestionDisplay({
               />
               {/* Current position marker */}
               <div
-                className="pointer-events-none absolute top-1/2 h-5 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/60 shadow-sm"
+                className="pointer-events-none absolute top-1/2 h-5 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/60 shadow-sm transition-[left] duration-300 ease-out"
                 style={{ left: `${positionPct}%` }}
                 aria-hidden="true"
               />
