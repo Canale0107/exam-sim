@@ -10,10 +10,12 @@ import {
   emptyProgressState,
   loadProgress,
   saveProgress,
+  clearProgress,
   loadActiveTrialInfo,
   saveActiveTrialInfo,
   loadTrialProgress,
   saveTrialProgress,
+  clearTrialProgress,
 } from "@/lib/progress";
 import {
   apiBaseUrl,
@@ -32,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 const SESSION_LAST_QSET_JSON_KEY = "exam-sim:lastQuestionSetJson";
+const SAMPLE_SET_ID = "sample-set";
 
 type AuthUser = { id: string; email: string | null; idToken: string | null };
 
@@ -444,7 +447,21 @@ export function StudyApp() {
   }
 
   function onBackToHome() {
-    if (confirm("ホームに戻りますか？進捗は保存されます。")) {
+    const isSample = qset?.set_id === SAMPLE_SET_ID;
+    const message = isSample
+      ? "ホームに戻りますか？サンプル問題の進捗はリセットされます。"
+      : "ホームに戻りますか？進捗は保存されます。";
+
+    if (confirm(message)) {
+      // Clear sample set progress from localStorage
+      if (isSample && qset) {
+        if (trialInfo) {
+          clearTrialProgress({ userId, setId: qset.set_id, trialId: trialInfo.trialId });
+          saveActiveTrialInfo({ userId, setId: qset.set_id, info: null });
+        } else {
+          clearProgress({ userId, setId: qset.set_id });
+        }
+      }
       window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
       setQset(null);
       setProgress(emptyProgressState());
