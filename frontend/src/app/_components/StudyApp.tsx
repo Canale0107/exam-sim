@@ -594,8 +594,6 @@ export function StudyApp() {
               accuracyRate={accuracyRate}
               trialStartedAt={trialInfo?.startedAt ?? null}
               trialStatus={trialInfo?.status ?? null}
-              onBackToExam={() => setView("exam")}
-              onBackToHome={onBackToHome}
             />
           )}
         </div>

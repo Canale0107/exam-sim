@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatsCard } from "@/components/stats-card";
-import { Button } from "@/components/ui/button";
 import { BookOpenIcon, CheckCircle2Icon, TrendingUpIcon, XCircleIcon } from "@/components/icons";
 import type { TrialStatus } from "@/lib/progress";
 
@@ -135,8 +134,6 @@ export function ResultsScreen(props: {
   accuracyRate: number;
   trialStartedAt: string | null;
   trialStatus: TrialStatus | null;
-  onBackToExam: () => void;
-  onBackToHome: () => void;
 }) {
   const segments: Segment[] = [
     { label: "正解", value: props.correctAnswers, className: "text-success", dotClassName: "bg-success" },
@@ -217,21 +214,6 @@ export function ResultsScreen(props: {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-        <Button
-          variant="outline"
-          className="bg-transparent h-11 hover:bg-muted/50 transition-all"
-          onClick={props.onBackToExam}
-        >
-          問題に戻る
-        </Button>
-        <Button
-          className="h-11 shadow-md hover:shadow-lg transition-all"
-          onClick={props.onBackToHome}
-        >
-          ホームに戻る
-        </Button>
-      </div>
     </div>
   );
 }
