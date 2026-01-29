@@ -355,7 +355,7 @@ def handle_list_trials(table, pk: str, event: dict):
     return response(200, {
         "setId": set_id,
         "activeTrialId": active_trial_id,
-        "trialCount": decimal_to_native(active_item.get("trialCount", len(trials))) if active_item else len(trials),
+        "trialCount": len(trials),  # Return actual count of remaining trials, not cumulative count
         "trials": trials,
     })
 

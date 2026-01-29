@@ -669,7 +669,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                         <div className="flex items-center gap-2 pt-2">
                           <HistoryIcon className="h-3.5 w-3.5 text-muted-foreground" />
                           <span className="text-xs text-muted-foreground">
-                            {trialCount > 0 ? `${trialCount}回チャレンジ` : "未チャレンジ"}
+                            {trialCount > 0 ? `${trialCount}件の履歴` : "履歴なし"}
                           </span>
                           {hasActiveTrial && (
                             <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
