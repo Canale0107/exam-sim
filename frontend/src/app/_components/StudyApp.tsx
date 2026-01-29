@@ -5,8 +5,16 @@ import Link from "next/link";
 
 import type { Question, QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
-import type { Attempt, ProgressState } from "@/lib/progress";
-import { clearProgress, emptyProgressState, loadProgress, saveProgress } from "@/lib/progress";
+import type { Attempt, ProgressState, TrialStatus, LocalTrialInfo } from "@/lib/progress";
+import {
+  emptyProgressState,
+  loadProgress,
+  saveProgress,
+  loadActiveTrialInfo,
+  saveActiveTrialInfo,
+  loadTrialProgress,
+  saveTrialProgress,
+} from "@/lib/progress";
 import {
   apiBaseUrl,
   authHeader,
@@ -15,16 +23,24 @@ import {
   isCognitoConfigured,
   storeTokens,
 } from "@/lib/awsAuth";
+import { listTrials, getTrial, updateTrial, completeTrial } from "@/lib/trialApi";
 import { QuestionSetGrid } from "@/components/question-set-grid";
 import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
 import { ResultsScreen } from "@/app/_components/ResultsScreen";
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon, SkipForwardIcon } from "@/components/icons";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 const SESSION_LAST_QSET_JSON_KEY = "exam-sim:lastQuestionSetJson";
 
 type AuthUser = { id: string; email: string | null; idToken: string | null };
+
+type TrialInfo = {
+  trialId: string;
+  trialNumber: number; // kept for internal use
+  status: TrialStatus;
+  startedAt: string;
+};
 
 function clamp(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
@@ -93,6 +109,11 @@ export function StudyApp() {
   const [view, setView] = useState<"exam" | "results">("exam");
   const isLoadingRemoteRef = useRef(false);
   const skipNextRemoteSaveRef = useRef(false);
+  const explicitTrialSelectedRef = useRef<TrialInfo | null>(null);
+
+  // Trial state
+  const [trialInfo, setTrialInfo] = useState<TrialInfo | null>(null);
+  const isReadOnly = trialInfo?.status === "completed";
 
   const userId = authUser?.id ?? "local";
 
@@ -151,13 +172,74 @@ export function StudyApp() {
   // Load progress whenever user/set changes
   useEffect(() => {
     if (!qset) return;
-    const local = normalizeProgressForSet(qset, loadProgress({ userId, setId: qset.set_id }));
-    
-    // Set local progress immediately for UI responsiveness
-    queueMicrotask(() => {
-      setProgress(local);
-      setView("exam");
-    });
+
+    // If a trial was explicitly selected (e.g., from trial history modal), use that
+    const explicitTrial = explicitTrialSelectedRef.current;
+    if (explicitTrial) {
+      explicitTrialSelectedRef.current = null; // Clear after use
+
+      // Load the explicitly selected trial's progress
+      const trialProgress = loadTrialProgress({ userId, setId: qset.set_id, trialId: explicitTrial.trialId });
+      const normalized = normalizeProgressForSet(qset, trialProgress);
+
+      queueMicrotask(() => {
+        setTrialInfo(explicitTrial);
+        setProgress(normalized);
+        // Show results screen first for completed trials
+        setView(explicitTrial.status === "completed" ? "results" : "exam");
+      });
+
+      // Still fetch from remote to sync if needed, but don't overwrite trialInfo
+      const base = apiBaseUrl();
+      if (base && userId !== "local") {
+        isLoadingRemoteRef.current = true;
+        (async () => {
+          try {
+            const trialRes = await getTrial(qset.set_id, explicitTrial.trialId);
+            const remoteState = trialRes.state ?? emptyProgressState();
+            const localTime = new Date(normalized.updatedAt || 0).getTime();
+            const remoteTime = new Date(remoteState.updatedAt || 0).getTime();
+            if (remoteTime > localTime) {
+              setProgress(normalizeProgressForSet(qset, remoteState));
+            }
+          } catch {
+            // ignore
+          } finally {
+            isLoadingRemoteRef.current = false;
+          }
+        })();
+      }
+      return;
+    }
+
+    // Check for local active trial first
+    const localTrialInfo = loadActiveTrialInfo({ userId, setId: qset.set_id });
+
+    if (localTrialInfo) {
+      // Load trial progress from localStorage
+      const trialProgress = loadTrialProgress({ userId, setId: qset.set_id, trialId: localTrialInfo.trialId });
+      const normalized = normalizeProgressForSet(qset, trialProgress);
+
+      queueMicrotask(() => {
+        setTrialInfo({
+          trialId: localTrialInfo.trialId,
+          trialNumber: localTrialInfo.trialNumber,
+          status: localTrialInfo.status,
+          startedAt: localTrialInfo.startedAt,
+        });
+        setProgress(normalized);
+        setView("exam");
+      });
+    } else {
+      // Fall back to legacy progress format
+      const local = normalizeProgressForSet(qset, loadProgress({ userId, setId: qset.set_id }));
+
+      queueMicrotask(() => {
+        setTrialInfo(null);
+        setProgress(local);
+        setView("exam");
+      });
+    }
 
     const base = apiBaseUrl();
     if (!base) {
@@ -172,27 +254,95 @@ export function StudyApp() {
     // Mark that we're loading from remote to prevent premature saves
     isLoadingRemoteRef.current = true;
 
-    const url = `${base.replace(/\/$/, "")}/progress?setId=${encodeURIComponent(qset.set_id)}`;
+    // Check for remote trials
     (async () => {
       try {
+        const trialsRes = await listTrials(qset.set_id);
+
+        if (trialsRes.activeTrialId) {
+          // Load the active trial
+          const trialRes = await getTrial(qset.set_id, trialsRes.activeTrialId);
+          const remoteState = trialRes.state ?? emptyProgressState();
+
+          // Compare with local
+          const localInfo = loadActiveTrialInfo({ userId, setId: qset.set_id });
+          const localState = localInfo?.trialId === trialsRes.activeTrialId
+            ? loadTrialProgress({ userId, setId: qset.set_id, trialId: trialsRes.activeTrialId })
+            : emptyProgressState();
+
+          const localTime = new Date(localState.updatedAt || 0).getTime();
+          const remoteTime = new Date(remoteState.updatedAt || 0).getTime();
+          const merged = remoteTime > localTime ? remoteState : localState;
+
+          setTrialInfo({
+            trialId: trialsRes.activeTrialId,
+            trialNumber: trialRes.trialNumber,
+            status: trialRes.status,
+            startedAt: trialRes.startedAt,
+          });
+          setProgress(normalizeProgressForSet(qset, merged));
+
+          // Save to local storage
+          saveActiveTrialInfo({
+            userId,
+            setId: qset.set_id,
+            info: {
+              trialId: trialsRes.activeTrialId,
+              trialNumber: trialRes.trialNumber,
+              status: trialRes.status,
+              startedAt: trialRes.startedAt,
+            },
+          });
+          saveTrialProgress({
+            userId,
+            setId: qset.set_id,
+            trialId: trialsRes.activeTrialId,
+            state: merged,
+          });
+
+          isLoadingRemoteRef.current = false;
+          return;
+        }
+
+        // No active trial on server, try legacy format
+        const url = `${base.replace(/\/$/, "")}/progress?setId=${encodeURIComponent(qset.set_id)}`;
         const res = await fetch(url, { headers: { ...(await authHeader()) } });
         if (!res.ok) {
           isLoadingRemoteRef.current = false;
           return;
         }
-        const remote = (await res.json()) as { state?: ProgressState | null };
+        const remote = (await res.json()) as {
+          state?: ProgressState | null;
+          trialId?: string;
+          trialNumber?: number;
+          trialStatus?: TrialStatus;
+        };
         const remoteState = remote?.state ?? null;
         if (!remoteState) {
           isLoadingRemoteRef.current = false;
           return;
         }
-        
-        // Compare timestamps more reliably
-        const localTime = new Date(local.updatedAt || 0).getTime();
+
+        // If server returned trial info, use it
+        if (remote.trialId) {
+          setTrialInfo({
+            trialId: remote.trialId,
+            trialNumber: remote.trialNumber ?? 1,
+            status: remote.trialStatus ?? "in_progress",
+            startedAt: (remote as { startedAt?: string }).startedAt ?? new Date().toISOString(),
+          });
+        }
+
+        // Compare timestamps
+        const localInfo = loadActiveTrialInfo({ userId, setId: qset.set_id });
+        const localProgress = localInfo
+          ? loadTrialProgress({ userId, setId: qset.set_id, trialId: localInfo.trialId })
+          : loadProgress({ userId, setId: qset.set_id });
+
+        const localTime = new Date(localProgress.updatedAt || 0).getTime();
         const remoteTime = new Date(remoteState.updatedAt || 0).getTime();
-        const merged = remoteTime > localTime ? remoteState : local;
-        
-        // Update progress with merged state
+        const merged = remoteTime > localTime ? remoteState : localProgress;
+
         setProgress(normalizeProgressForSet(qset, merged));
         isLoadingRemoteRef.current = false;
       } catch {
@@ -204,34 +354,47 @@ export function StudyApp() {
   // Persist progress
   useEffect(() => {
     if (!qset) return;
-    
-    // Always save to localStorage immediately for offline support
-    saveProgress({ userId, setId: qset.set_id, state: progress });
+
+    // Save to localStorage
+    if (trialInfo) {
+      saveTrialProgress({ userId, setId: qset.set_id, trialId: trialInfo.trialId, state: progress });
+    } else {
+      saveProgress({ userId, setId: qset.set_id, state: progress });
+    }
 
     const base = apiBaseUrl();
     if (!base) return;
     if (userId === "local") return;
-    
+
     // Don't save to remote while loading from remote to avoid race conditions
     if (isLoadingRemoteRef.current) return;
     if (skipNextRemoteSaveRef.current) {
       skipNextRemoteSaveRef.current = false;
       return;
     }
-    
-    const url = `${base.replace(/\/$/, "")}/progress`;
+
+    // Don't save if read-only (completed trial)
+    if (isReadOnly) return;
+
     (async () => {
       try {
-        await fetch(url, {
-          method: "PUT",
-          headers: { "content-type": "application/json", ...(await authHeader()) },
-          body: JSON.stringify({ setId: qset.set_id, state: progress }),
-        });
+        if (trialInfo) {
+          // Update trial via new API
+          await updateTrial(trialInfo.trialId, { setId: qset.set_id, state: progress });
+        } else {
+          // Use legacy API
+          const url = `${base.replace(/\/$/, "")}/progress`;
+          await fetch(url, {
+            method: "PUT",
+            headers: { "content-type": "application/json", ...(await authHeader()) },
+            body: JSON.stringify({ setId: qset.set_id, state: progress }),
+          });
+        }
       } catch {
         // ignore
       }
     })();
-  }, [progress, userId, qset]);
+  }, [progress, userId, qset, trialInfo, isReadOnly]);
 
   const current = useMemo(() => {
     if (!qset) return null;
@@ -239,9 +402,14 @@ export function StudyApp() {
     return { index: idx, question: qset.questions[idx] };
   }, [qset, progress.currentIndex]);
 
-  function handleSetSelected(set: QuestionSet) {
+  function handleSetSelected(set: QuestionSet, existingTrialInfo?: TrialInfo) {
     window.sessionStorage.setItem(SESSION_LAST_QSET_JSON_KEY, JSON.stringify(set));
+    // Store explicit trial selection so useEffect doesn't overwrite it
+    explicitTrialSelectedRef.current = existingTrialInfo ?? null;
     setQset(set);
+    if (existingTrialInfo) {
+      setTrialInfo(existingTrialInfo);
+    }
   }
 
   function gotoIndex(nextIndex: number) {
@@ -250,27 +418,19 @@ export function StudyApp() {
     setView("exam");
   }
 
-  function gotoFirstUnanswered() {
-    if (!qset) return;
-    const idx = qset.questions.findIndex(
-      (q) => !hasAnswered(progress.attemptsByQuestionId[q.id])
-    );
-    if (idx >= 0) gotoIndex(idx);
-  }
-
   function onToggleFlagged(flagged: boolean) {
-    if (!current) return;
+    if (!current || isReadOnly) return;
     setProgress((prev) => upsertAttempt(prev, current.question.id, { flagged }));
   }
 
   function onChangeNote(noteText: string) {
-    if (!current) return;
+    if (!current || isReadOnly) return;
     const note = noteText.trim() ? noteText : "";
     setProgress((prev) => upsertAttempt(prev, current.question.id, { note: note ? note : null }));
   }
 
   function onAnswer(selectedChoiceIds: string[]) {
-    if (!current) return;
+    if (!current || isReadOnly) return;
     if (!selectedChoiceIds.length) return;
     const q = current.question;
     const isCorrect = computeIsCorrect(q, selectedChoiceIds);
@@ -283,48 +443,16 @@ export function StudyApp() {
     );
   }
 
-  function onResetToUnanswered() {
-    if (!current) return;
-    setProgress((prev) =>
-      upsertAttempt(prev, current.question.id, {
-        selectedChoiceIds: null,
-        isCorrect: null,
-        answeredAt: null,
-      })
-    );
-  }
-
-  function onClearProgress() {
-    if (!qset) return;
-    if (confirm("進捗をリセットしてもよろしいですか？この操作は取り消せません。")) {
-      clearProgress({ userId, setId: qset.set_id });
-      // Prevent an immediate remote PUT right after reset.
-      skipNextRemoteSaveRef.current = true;
-      setProgress(emptyProgressState());
-
-      const base = apiBaseUrl();
-      if (!base) return;
-      if (userId === "local") return;
-
-      const url = `${base.replace(/\/$/, "")}/progress?setId=${encodeURIComponent(qset.set_id)}`;
-      (async () => {
-        try {
-          await fetch(url, { method: "DELETE", headers: { ...(await authHeader()) } });
-        } catch {
-          // ignore
-        }
-      })();
-    }
-  }
-
   function onBackToHome() {
     if (confirm("ホームに戻りますか？進捗は保存されます。")) {
       window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
       setQset(null);
       setProgress(emptyProgressState());
+      setTrialInfo(null);
       setView("exam");
     }
   }
+
 
   if (!qset) {
     return <QuestionSetGrid onSetSelected={handleSetSelected} />;
@@ -353,14 +481,45 @@ export function StudyApp() {
 
   const isLastQuestion = current.index >= totalQuestions - 1;
 
-  function onFinish() {
+  async function onFinish() {
     if (!qset) return;
-    if (unansweredQuestions > 0) {
-      const ok = confirm(
-        `未回答が ${unansweredQuestions} 問あります。解答を終了して結果を表示しますか？`
-      );
-      if (!ok) return;
+
+    // If read-only (viewing completed trial), just show results
+    if (isReadOnly) {
+      setView("results");
+      return;
     }
+
+    // Build confirmation message
+    let message = "";
+    if (unansweredQuestions > 0) {
+      message = `未回答が ${unansweredQuestions} 問あります。\n\n`;
+    }
+
+    if (trialInfo) {
+      message += "解答を終了すると、結果が記録され、このトライアルの解答を変更できなくなります。\n\n終了してもよろしいですか？";
+    } else {
+      message += "解答を終了して結果を表示しますか？";
+    }
+
+    if (!confirm(message)) return;
+
+    // Complete the trial if there is one
+    if (trialInfo && trialInfo.status !== "completed") {
+      const base = apiBaseUrl();
+      if (base && userId !== "local") {
+        try {
+          await completeTrial(trialInfo.trialId, { setId: qset.set_id, totalQuestions });
+        } catch {
+          // ignore remote error
+        }
+      }
+
+      // Update local state
+      saveActiveTrialInfo({ userId, setId: qset.set_id, info: null });
+      setTrialInfo({ ...trialInfo, status: "completed" });
+    }
+
     setView("results");
   }
 
@@ -371,9 +530,11 @@ export function StudyApp() {
         <ExamSidebar
           questionSet={qset}
           progress={progress}
-          currentQuestionIndex={current.index}
+          currentQuestionIndex={view === "results" ? -1 : current.index}
+          trialStartedAt={trialInfo?.startedAt ?? null}
+          isReadOnly={isReadOnly}
           onQuestionSelect={gotoIndex}
-          onReset={onClearProgress}
+          onShowResults={() => setView("results")}
           onBackToHome={onBackToHome}
         />
       </aside>
@@ -382,7 +543,7 @@ export function StudyApp() {
       <main className="flex flex-1 flex-col overflow-hidden">
         <div className="border-b border-border bg-card shadow-sm">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-4">
-            <div className="min-w-0 truncate text-sm text-muted-foreground">
+            <div className="truncate text-sm text-muted-foreground">
               {authUser ? `ログイン中: ${authUser.email ?? authUser.id}` : "ゲスト（未ログイン）"}
             </div>
             <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -390,6 +551,15 @@ export function StudyApp() {
             </Link>
           </div>
         </div>
+
+        {/* Read-only banner */}
+        {isReadOnly && (
+          <div className="bg-warning/10 border-b border-warning/30 px-6 py-2">
+            <div className="mx-auto max-w-3xl text-sm text-warning text-center">
+              このトライアルは完了済みです。閲覧のみ可能です。
+            </div>
+          </div>
+        )}
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
@@ -406,10 +576,10 @@ export function StudyApp() {
                 unknownAnswers={unknownAnswers}
                 accuracyRate={accuracyRate}
                 attempt={currentAttempt}
+                isReadOnly={isReadOnly}
                 onAnswerSubmit={onAnswer}
                 onFlagToggle={onToggleFlagged}
                 onNoteChange={onChangeNote}
-                onResetAnswer={onResetToUnanswered}
               />
             </div>
           ) : (
@@ -422,8 +592,8 @@ export function StudyApp() {
               unknownAnswers={unknownAnswers}
               unansweredQuestions={unansweredQuestions}
               accuracyRate={accuracyRate}
-              onBackToExam={() => setView("exam")}
-              onBackToHome={onBackToHome}
+              trialStartedAt={trialInfo?.startedAt ?? null}
+              trialStatus={trialInfo?.status ?? null}
             />
           )}
         </div>
@@ -442,24 +612,15 @@ export function StudyApp() {
                 前の問題
               </Button>
 
-              <Button 
-                variant="outline" 
-                onClick={gotoFirstUnanswered}
-                className="h-11 shadow-sm hover:shadow-md transition-all"
-              >
-                <SkipForwardIcon className="mr-2 h-4 w-4" />
-                未回答へ
-              </Button>
-
               {isLastQuestion ? (
-                <Button 
+                <Button
                   onClick={onFinish}
                   className="h-11 shadow-md hover:shadow-lg transition-all"
                 >
-                  解答を終了する
+                  {isReadOnly ? "結果画面へ" : "解答を終了する"}
                 </Button>
               ) : (
-                <Button 
+                <Button
                   onClick={() => gotoIndex(current.index + 1)}
                   className="h-11 shadow-md hover:shadow-lg transition-all"
                 >

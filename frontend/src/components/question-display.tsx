@@ -26,10 +26,10 @@ interface QuestionDisplayProps {
   unknownAnswers: number;
   accuracyRate: number;
   attempt?: Attempt;
+  isReadOnly?: boolean;
   onAnswerSubmit: (selectedChoiceIds: string[]) => void;
   onFlagToggle: (flagged: boolean) => void;
   onNoteChange: (note: string) => void;
-  onResetAnswer: () => void;
 }
 
 export function QuestionDisplay({
@@ -42,10 +42,10 @@ export function QuestionDisplay({
   unknownAnswers,
   accuracyRate,
   attempt,
+  isReadOnly = false,
   onAnswerSubmit,
   onFlagToggle,
   onNoteChange,
-  onResetAnswer,
 }: QuestionDisplayProps) {
   const [selectedChoiceIds, setSelectedChoiceIds] = useState<string[]>(
     attempt?.selectedChoiceIds ?? []
@@ -64,7 +64,7 @@ export function QuestionDisplay({
       : 0;
 
   const handleChoiceClick = (choiceId: string) => {
-    if (isAnswered) return;
+    if (isAnswered || isReadOnly) return;
 
     if (isMultiple) {
       setSelectedChoiceIds((prev) =>
@@ -78,11 +78,6 @@ export function QuestionDisplay({
   const handleSubmit = () => {
     if (selectedChoiceIds.length === 0) return;
     onAnswerSubmit(selectedChoiceIds);
-  };
-
-  const handleReset = () => {
-    setSelectedChoiceIds([]);
-    onResetAnswer();
   };
 
   const getChoiceStatus = (choiceId: string) => {
@@ -250,20 +245,20 @@ export function QuestionDisplay({
               key={choice.id}
               type="button"
               onClick={() => handleChoiceClick(choice.id)}
-              disabled={isAnswered}
-              className={`group relative w-full rounded-xl border-2 p-5 text-left transition-all duration-200 ${
+              disabled={isAnswered || isReadOnly}
+              className={`group relative w-full rounded-xl border-2 p-5 text-left ${isAnswered || isReadOnly ? "" : "transition-all duration-200"} ${
                 status === "correct"
                   ? "border-success bg-success/10 shadow-sm shadow-success/20"
                   : status === "incorrect"
                     ? "border-destructive bg-destructive/10 shadow-sm shadow-destructive/20"
                     : isSelected
-                      ? "border-primary bg-primary/10 shadow-sm shadow-primary/10 hover:border-primary/80"
-                      : "border-border bg-card hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm"
-              } ${isAnswered ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
+                      ? `border-primary bg-primary/10 shadow-sm shadow-primary/10${isAnswered || isReadOnly ? "" : " hover:border-primary/80"}`
+                      : `border-border bg-card${isAnswered || isReadOnly ? "" : " hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm"}`
+              } ${isAnswered || isReadOnly ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
             >
               <div className="flex items-start gap-4">
                 <div
-                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded transition-all ${
+                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isAnswered || isReadOnly ? "" : "transition-all"} ${
                     isMultiple ? "rounded-md" : "rounded-full"
                   } border-2 ${
                     status === "correct"
@@ -272,7 +267,7 @@ export function QuestionDisplay({
                         ? "border-destructive bg-destructive shadow-sm"
                         : isSelected
                           ? "border-primary bg-primary shadow-sm"
-                          : "border-muted-foreground/50 group-hover:border-primary/50"
+                          : `border-muted-foreground/50${isAnswered || isReadOnly ? "" : " group-hover:border-primary/50"}`
                   }`}
                 >
                   {isSelected && status === "default" && (
@@ -292,11 +287,11 @@ export function QuestionDisplay({
       </div>
 
       {/* Submit Button */}
-      {!isAnswered && (
-        <Button 
-          onClick={handleSubmit} 
-          disabled={selectedChoiceIds.length === 0} 
-          className="w-full h-12 text-base font-semibold shadow-md transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" 
+      {!isAnswered && !isReadOnly && (
+        <Button
+          onClick={handleSubmit}
+          disabled={selectedChoiceIds.length === 0}
+          className="w-full h-12 text-base font-semibold shadow-md transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           size="lg"
         >
           回答を送信
@@ -380,16 +375,6 @@ export function QuestionDisplay({
         </Card>
       )}
 
-      {/* Reset Button */}
-      {isAnswered && (
-        <Button 
-          variant="outline" 
-          onClick={handleReset} 
-          className="w-full h-11 bg-transparent hover:bg-muted/50 transition-all"
-        >
-          未回答に戻す
-        </Button>
-      )}
     </div>
   );
 }

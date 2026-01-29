@@ -2,8 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatsCard } from "@/components/stats-card";
-import { Button } from "@/components/ui/button";
 import { BookOpenIcon, CheckCircle2Icon, TrendingUpIcon, XCircleIcon } from "@/components/icons";
+import type { TrialStatus } from "@/lib/progress";
 
 type Segment = {
   label: string;
@@ -109,6 +109,20 @@ function ResultDonutChart(props: {
   );
 }
 
+function formatTrialDate(isoString: string): string {
+  try {
+    const date = new Date(isoString);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    return `${y}-${m}-${d} ${hh}:${mm}`;
+  } catch {
+    return isoString;
+  }
+}
+
 export function ResultsScreen(props: {
   title: string;
   totalQuestions: number;
@@ -118,8 +132,8 @@ export function ResultsScreen(props: {
   unknownAnswers: number;
   unansweredQuestions: number;
   accuracyRate: number;
-  onBackToExam: () => void;
-  onBackToHome: () => void;
+  trialStartedAt: string | null;
+  trialStatus: TrialStatus | null;
 }) {
   const segments: Segment[] = [
     { label: "正解", value: props.correctAnswers, className: "text-success", dotClassName: "bg-success" },
@@ -138,10 +152,24 @@ export function ResultsScreen(props: {
     },
   ];
 
+  const isCompleted = props.trialStatus === "completed";
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">結果</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold tracking-tight">結果</h1>
+          {props.trialStartedAt !== null && (
+            <span className={`text-sm px-3 py-1 rounded-full ${
+              isCompleted
+                ? "bg-success/10 text-success"
+                : "bg-primary/10 text-primary"
+            }`}>
+              受験開始: {formatTrialDate(props.trialStartedAt)}
+              {isCompleted && " (完了)"}
+            </span>
+          )}
+        </div>
         <p className="mt-2 text-base text-muted-foreground">{props.title}</p>
       </div>
 
@@ -186,22 +214,6 @@ export function ResultsScreen(props: {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-        <Button 
-          variant="outline" 
-          className="bg-transparent h-11 hover:bg-muted/50 transition-all" 
-          onClick={props.onBackToExam}
-        >
-          問題に戻る
-        </Button>
-        <Button 
-          className="h-11 shadow-md hover:shadow-lg transition-all" 
-          onClick={props.onBackToHome}
-        >
-          ホームに戻る
-        </Button>
-      </div>
     </div>
   );
 }
-

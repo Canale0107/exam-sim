@@ -4,27 +4,59 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { QuestionSet } from "@/lib/questionSet";
 import type { ProgressState } from "@/lib/progress";
-import { HomeIcon, RotateCcwIcon } from "@/components/icons";
+import { HomeIcon, BarChart2Icon } from "@/components/icons";
 
 interface ExamSidebarProps {
   questionSet: QuestionSet;
   progress: ProgressState;
   currentQuestionIndex: number;
+  trialStartedAt: string | null;
+  isReadOnly: boolean;
   onQuestionSelect: (index: number) => void;
-  onReset: () => void;
+  onShowResults?: () => void;
   onBackToHome: () => void;
+}
+
+function formatTrialDate(isoString: string): string {
+  try {
+    const date = new Date(isoString);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    return `${y}-${m}-${d} ${hh}:${mm}`;
+  } catch {
+    return isoString;
+  }
 }
 
 export function ExamSidebar({
   questionSet,
   progress,
   currentQuestionIndex,
+  trialStartedAt,
+  isReadOnly,
   onQuestionSelect,
-  onReset,
+  onShowResults,
   onBackToHome,
 }: ExamSidebarProps) {
   return (
     <div className="flex h-full flex-col bg-sidebar">
+      {/* Trial Header */}
+      {trialStartedAt !== null && (
+        <div className="border-b border-sidebar-border px-6 py-4">
+          <div className={`text-sm font-medium px-3 py-1.5 rounded-lg text-center ${
+            isReadOnly
+              ? "bg-success/10 text-success"
+              : "bg-primary/10 text-primary"
+          }`}>
+            受験開始: {formatTrialDate(trialStartedAt)}
+            {isReadOnly && " (閲覧のみ)"}
+          </div>
+        </div>
+      )}
+
       <ScrollArea className="flex-1">
         <div className="p-6">
           <h3 className="mb-4 text-sm font-semibold text-sidebar-foreground uppercase tracking-wide">問題一覧</h3>
@@ -39,16 +71,16 @@ export function ExamSidebar({
                   key={question.id}
                   type="button"
                   onClick={() => onQuestionSelect(index)}
-                  className={`relative flex aspect-square items-center justify-center rounded-lg border-2 text-sm font-semibold transition-all duration-200 ${
+                  className={`relative flex aspect-square items-center justify-center rounded-lg border-2 text-sm font-semibold ${isReadOnly ? "" : "transition-all duration-200"} ${
                     isCurrent
                       ? "border-primary bg-primary text-primary-foreground shadow-lg scale-105 z-10"
                       : answer && hasAnswer
                         ? answer.isCorrect === true
-                          ? "border-success/60 bg-success/15 text-success hover:border-success hover:bg-success/25 hover:scale-105"
+                          ? `border-success/60 bg-success/15 text-success${isReadOnly ? "" : " hover:border-success hover:bg-success/25 hover:scale-105"}`
                           : answer.isCorrect === false
-                            ? "border-destructive/60 bg-destructive/15 text-destructive hover:border-destructive hover:bg-destructive/25 hover:scale-105"
-                            : "border-warning/60 bg-warning/15 text-warning hover:border-warning hover:bg-warning/25 hover:scale-105"
-                        : "border-sidebar-border bg-sidebar-accent text-sidebar-foreground hover:border-primary/50 hover:bg-primary/10 hover:scale-105"
+                            ? `border-destructive/60 bg-destructive/15 text-destructive${isReadOnly ? "" : " hover:border-destructive hover:bg-destructive/25 hover:scale-105"}`
+                            : `border-warning/60 bg-warning/15 text-warning${isReadOnly ? "" : " hover:border-warning hover:bg-warning/25 hover:scale-105"}`
+                        : `border-sidebar-border bg-sidebar-accent text-sidebar-foreground${isReadOnly ? "" : " hover:border-primary/50 hover:bg-primary/10 hover:scale-105"}`
                   }`}
                 >
                   {index + 1}
@@ -62,27 +94,26 @@ export function ExamSidebar({
         </div>
       </ScrollArea>
 
-      <div className="border-t border-sidebar-border p-6 bg-sidebar-accent/30">
-        <div className="space-y-2.5">
-          <Button 
-            variant="outline" 
-            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md" 
-            onClick={onReset}
+      <div className="border-t border-sidebar-border p-6 bg-sidebar-accent/30 space-y-2.5">
+        {isReadOnly && onShowResults && (
+          <Button
+            variant="outline"
+            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"
+            onClick={onShowResults}
           >
-            <RotateCcwIcon className="mr-2 h-4 w-4" />
-            進捗をリセット
+            <BarChart2Icon className="mr-2 h-4 w-4" />
+            結果画面へ
           </Button>
-          <Button 
-            variant="outline" 
-            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md" 
-            onClick={onBackToHome}
-          >
-            <HomeIcon className="mr-2 h-4 w-4" />
-            ホームに戻る
-          </Button>
-        </div>
+        )}
+        <Button
+          variant="outline"
+          className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"
+          onClick={onBackToHome}
+        >
+          <HomeIcon className="mr-2 h-4 w-4" />
+          ホームに戻る
+        </Button>
       </div>
     </div>
   );
 }
-

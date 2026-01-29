@@ -110,6 +110,67 @@ resource "aws_lambda_permission" "allow_apigw_invoke_progress" {
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
 }
 
+# Trial management routes
+resource "aws_apigatewayv2_route" "trials_list" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /progress/trials"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
+}
+
+resource "aws_apigatewayv2_route" "trials_create" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "POST /progress/trials"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
+}
+
+resource "aws_apigatewayv2_route" "trial_get" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /progress/trials/{trialId}"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
+}
+
+resource "aws_apigatewayv2_route" "trial_update" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "PUT /progress/trials/{trialId}"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
+}
+
+resource "aws_apigatewayv2_route" "trial_delete" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "DELETE /progress/trials/{trialId}"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
+}
+
+resource "aws_apigatewayv2_route" "trial_complete" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "POST /progress/trials/{trialId}/complete"
+
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
+
+  target = "integrations/${aws_apigatewayv2_integration.lambda_progress.id}"
+}
+
 resource "aws_apigatewayv2_integration" "lambda_question_sets" {
   api_id                 = aws_apigatewayv2_api.http.id
   integration_type       = "AWS_PROXY"

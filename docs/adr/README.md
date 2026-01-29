@@ -14,3 +14,4 @@
 - `0002-progress-storage-model.md`: 進捗データの保存モデル（提案/検討中）
 - `0003-platform-strategy-supabase-first.md`: Supabase優先（現在は置き換え済み）
 - `0004-platform-strategy-aws-first.md`: AWS完結でMVPを作る（AWS-first）
+- `0005-multi-trial-management.md`: 複数トライアル管理機能の設計

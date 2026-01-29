@@ -4,20 +4,93 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
-import { BookOpenIcon, RotateCcwIcon, UploadIcon, PlusIcon, XCircleIcon } from "@/components/icons";
+import {
+  BookOpenIcon,
+  RotateCcwIcon,
+  UploadIcon,
+  PlusIcon,
+  XCircleIcon,
+  PlayIcon,
+  HistoryIcon,
+  CheckCircle2Icon,
+  TrendingUpIcon,
+  TrashIcon,
+  PlusCircleIcon,
+} from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl, authHeader, getCurrentUser, isCognitoConfigured } from "@/lib/awsAuth";
+import { listTrials, deleteTrial, createTrial } from "@/lib/trialApi";
+import type { Trial, TrialStatus, TrialSummary } from "@/lib/progress";
+
+type TrialInfo = {
+  trialId: string;
+  trialNumber: number;
+  status: TrialStatus;
+  startedAt: string;
+};
 
 interface QuestionSetGridProps {
-  onSetSelected: (set: QuestionSet) => void;
+  onSetSelected: (set: QuestionSet, trialInfo?: TrialInfo) => void;
 }
 
 interface CloudQuestionSet {
   setId: string;
   lastModified?: string | null;
+}
+
+interface TrialListData {
+  activeTrialId: string | null;
+  trialCount: number;
+  trials: Trial[];
+}
+
+function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return "不明";
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "不明";
+  }
+}
+
+function formatDuration(seconds: number | null): string {
+  if (seconds === null) return "";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins === 0) return `${secs}秒`;
+  return `${mins}分${secs}秒`;
+}
+
+function SummaryBadges({ summary }: { summary: TrialSummary | null }) {
+  if (!summary) return null;
+
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      <div className="flex items-center gap-1">
+        <CheckCircle2Icon className="h-3.5 w-3.5 text-success" />
+        <span className="font-medium">{summary.correctAnswers}</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <XCircleIcon className="h-3.5 w-3.5 text-destructive" />
+        <span className="font-medium">{summary.incorrectAnswers}</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <TrendingUpIcon className="h-3.5 w-3.5 text-primary" />
+        <span className="font-medium">{summary.accuracyRate}%</span>
+      </div>
+    </div>
+  );
 }
 
 export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
@@ -29,12 +102,22 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
   const [cloudLoading, setCloudLoading] = useState<boolean>(false);
   const [cloudQuestionCounts, setCloudQuestionCounts] = useState<Record<string, number>>({});
   const [cloudQuestionCountLoading, setCloudQuestionCountLoading] = useState<Record<string, boolean>>({});
+  const [trialDataCache, setTrialDataCache] = useState<Record<string, TrialListData>>({});
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [uploadSetId, setUploadSetId] = useState<string>("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadJsonText, setUploadJsonText] = useState<string>("");
   const [sampleQuestionCount, setSampleQuestionCount] = useState<number | null>(null);
+
+  // Trial selection modal
+  const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+  const [selectedSetQuestionSet, setSelectedSetQuestionSet] = useState<QuestionSet | null>(null);
+  const [trialModalLoading, setTrialModalLoading] = useState<boolean>(false);
+  const [trialModalTrials, setTrialModalTrials] = useState<Trial[]>([]);
+  const [trialModalActiveId, setTrialModalActiveId] = useState<string | null>(null);
+  const [deletingTrialId, setDeletingTrialId] = useState<string | null>(null);
+  const [creatingTrial, setCreatingTrial] = useState<boolean>(false);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -116,13 +199,34 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
     }
   }
 
+  async function fetchTrialData(setId: string) {
+    const base = apiBaseUrl();
+    if (!base) return;
+    if (!isLoggedIn) return;
+    if (trialDataCache[setId] !== undefined) return;
+
+    try {
+      const data = await listTrials(setId);
+      setTrialDataCache((prev) => ({
+        ...prev,
+        [setId]: {
+          activeTrialId: data.activeTrialId,
+          trialCount: data.trialCount,
+          trials: data.trials,
+        },
+      }));
+    } catch {
+      // ignore - trial info is optional
+    }
+  }
+
   useEffect(() => {
     if (!isLoggedIn) return;
     if (cloudItems.length === 0) return;
     cloudItems.forEach((it) => {
       void fetchCloudQuestionCount(it.setId);
+      void fetchTrialData(it.setId);
     });
-    // Intentionally omit fetchCloudQuestionCount from deps to avoid reruns on state updates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, cloudItems]);
 
@@ -199,19 +303,12 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
     }
   }
 
-  async function loadFromCloud(setId: string) {
-    setUploadStatus("");
+  async function loadQuestionSetFromCloud(setId: string): Promise<QuestionSet | null> {
     const base = apiBaseUrl();
-    if (!base) {
-      setUploadStatus("API_BASE_URL が未設定です（frontend/.env.local）。");
-      return;
-    }
-    if (!isLoggedIn) {
-      setUploadStatus("ログインしてください（/auth）。");
-      return;
-    }
+    if (!base) return null;
+    if (!isLoggedIn) return null;
+
     try {
-      setUploadStatus("読み込み中...");
       const res = await fetch(
         `${base.replace(/\/$/, "")}/question-sets/download-url?setId=${encodeURIComponent(setId)}`,
         { headers: { ...(await authHeader()) } },
@@ -223,11 +320,147 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       const jsonRes = await fetch(data.downloadUrl, { cache: "no-store" });
       if (!jsonRes.ok) throw new Error(`download failed: ${jsonRes.status}`);
       const text = await jsonRes.text();
-      const loaded = loadQuestionSetFromJsonText(text);
-      onSetSelected(loaded);
-      setUploadStatus("");
+      return loadQuestionSetFromJsonText(text);
+    } catch {
+      return null;
+    }
+  }
+
+  async function openTrialModal(setId: string) {
+    setSelectedSetId(setId);
+    setTrialModalLoading(true);
+    setTrialModalTrials([]);
+    setTrialModalActiveId(null);
+    setSelectedSetQuestionSet(null);
+
+    try {
+      // Load question set and trials in parallel
+      const [qset, trialsData] = await Promise.all([
+        loadQuestionSetFromCloud(setId),
+        listTrials(setId),
+      ]);
+
+      setSelectedSetQuestionSet(qset);
+
+      // Sort trials: active first, then by trialNumber descending
+      const sorted = [...trialsData.trials].sort((a, b) => {
+        if (a.trialId === trialsData.activeTrialId) return -1;
+        if (b.trialId === trialsData.activeTrialId) return 1;
+        return b.trialNumber - a.trialNumber;
+      });
+
+      setTrialModalTrials(sorted);
+      setTrialModalActiveId(trialsData.activeTrialId);
     } catch (e) {
-      setUploadStatus(e instanceof Error ? e.message : "読み込みに失敗しました");
+      setError(e instanceof Error ? e.message : "読み込みに失敗しました");
+      setSelectedSetId(null);
+    } finally {
+      setTrialModalLoading(false);
+    }
+  }
+
+  function closeTrialModal() {
+    setSelectedSetId(null);
+    setSelectedSetQuestionSet(null);
+    setTrialModalTrials([]);
+    setTrialModalActiveId(null);
+  }
+
+  function selectTrial(trial: Trial) {
+    if (!selectedSetQuestionSet) return;
+
+    const trialInfo: TrialInfo = {
+      trialId: trial.trialId,
+      trialNumber: trial.trialNumber,
+      status: trial.status,
+      startedAt: trial.startedAt,
+    };
+    onSetSelected(selectedSetQuestionSet, trialInfo);
+    closeTrialModal();
+  }
+
+  async function handleCreateNewTrial() {
+    if (!selectedSetId || !selectedSetQuestionSet) return;
+
+    setCreatingTrial(true);
+    try {
+      const totalQuestions = selectedSetQuestionSet.questions.length;
+      const res = await createTrial({ setId: selectedSetId, totalQuestions });
+
+      const trialInfo: TrialInfo = {
+        trialId: res.trialId,
+        trialNumber: res.trialNumber,
+        status: "in_progress",
+        startedAt: res.startedAt,
+      };
+      onSetSelected(selectedSetQuestionSet, trialInfo);
+      closeTrialModal();
+
+      // Update cache
+      setTrialDataCache((prev) => {
+        const existing = prev[selectedSetId];
+        return {
+          ...prev,
+          [selectedSetId]: {
+            activeTrialId: res.trialId,
+            trialCount: (existing?.trialCount ?? 0) + 1,
+            trials: [
+              {
+                trialId: res.trialId,
+                trialNumber: res.trialNumber,
+                status: "in_progress",
+                startedAt: res.startedAt,
+                completedAt: null,
+                state: res.state,
+                summary: null,
+              },
+              ...(existing?.trials ?? []),
+            ],
+          },
+        };
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.startsWith("active_trial_exists:")) {
+        setError("進行中のトライアルがあります。先にそれを完了させてください。");
+      } else {
+        setError(msg || "トライアル作成に失敗しました");
+      }
+    } finally {
+      setCreatingTrial(false);
+    }
+  }
+
+  async function handleDeleteTrial(trialId: string) {
+    if (!selectedSetId) return;
+    if (!confirm("このトライアルを削除しますか？この操作は取り消せません。")) return;
+
+    setDeletingTrialId(trialId);
+    try {
+      await deleteTrial(selectedSetId, trialId);
+      setTrialModalTrials((prev) => prev.filter((t) => t.trialId !== trialId));
+      if (trialModalActiveId === trialId) {
+        setTrialModalActiveId(null);
+      }
+
+      // Update cache
+      setTrialDataCache((prev) => {
+        const existing = prev[selectedSetId];
+        if (!existing) return prev;
+        return {
+          ...prev,
+          [selectedSetId]: {
+            ...existing,
+            activeTrialId: existing.activeTrialId === trialId ? null : existing.activeTrialId,
+            trialCount: Math.max(0, existing.trialCount - 1),
+            trials: existing.trials.filter((t) => t.trialId !== trialId),
+          },
+        };
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "削除に失敗しました");
+    } finally {
+      setDeletingTrialId(null);
     }
   }
 
@@ -243,17 +476,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
     }
   };
 
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return "日付不明";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" });
-    } catch {
-      return "日付不明";
-    }
-  };
-
-  async function deleteFromCloud(setId: string) {
+  async function deleteQuestionSetFromCloud(setId: string) {
     setUploadStatus("");
     const base = apiBaseUrl();
     if (!base) {
@@ -275,7 +498,6 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       );
       if (!res.ok) throw new Error(`delete failed: ${res.status}`);
       setUploadStatus("削除しました");
-      // Optimistically remove from UI even if list refresh fails.
       setCloudItems((prev) => prev.filter((it) => it.setId !== setId));
       setCloudQuestionCounts((prev) => {
         const next = { ...prev };
@@ -283,6 +505,11 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         return next;
       });
       setCloudQuestionCountLoading((prev) => {
+        const next = { ...prev };
+        delete next[setId];
+        return next;
+      });
+      setTrialDataCache((prev) => {
         const next = { ...prev };
         delete next[setId];
         return next;
@@ -323,6 +550,9 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         {error && (
           <div className="mb-6 rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-sm text-destructive shadow-sm">
             {error}
+            <button className="ml-2 underline" onClick={() => setError("")}>
+              閉じる
+            </button>
           </div>
         )}
         {uploadStatus && (
@@ -334,8 +564,8 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         {/* Sample Question Set */}
         <div className="mb-10">
           <h2 className="mb-5 text-xl font-bold tracking-tight">サンプル問題集</h2>
-          <Card 
-            className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group" 
+          <Card
+            className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group"
             onClick={handleLoadSample}
           >
             <CardHeader className="pb-3">
@@ -360,10 +590,10 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
           <div>
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-xl font-bold tracking-tight">自分の問題集</h2>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="icon"
-                onClick={refreshCloudList} 
+                onClick={refreshCloudList}
                 disabled={cloudLoading}
                 className="h-9 w-9 shadow-sm hover:shadow-md transition-all"
                 aria-label="更新"
@@ -391,51 +621,67 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                 </CardContent>
               </Card>
 
-              {cloudItems.map((item) => (
-                <Card
-                  key={item.setId}
-                  className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group relative"
-                  onClick={() => loadFromCloud(item.setId)}
-                >
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-3 top-3 h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      deleteFromCloud(item.setId);
-                    }}
-                    aria-label={`delete ${item.setId}`}
+              {cloudItems.map((item) => {
+                const data = trialDataCache[item.setId];
+                const trialCount = data?.trialCount ?? 0;
+                const hasActiveTrial = data?.activeTrialId != null;
+
+                return (
+                  <Card
+                    key={item.setId}
+                    className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group relative"
+                    onClick={() => openTrialModal(item.setId)}
                   >
-                    <XCircleIcon className="h-4 w-4" />
-                  </Button>
-                  <CardHeader className="pb-3 pr-12">
-                    <CardTitle className="flex items-center gap-3 truncate text-base">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
-                        <BookOpenIcon className="h-5 w-5 text-primary" />
-                      </div>
-                      <span className="truncate" title={item.setId}>
-                        {item.setId}
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="min-w-0">
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        問題数:{" "}
-                        {cloudQuestionCounts[item.setId] !== undefined
-                          ? `${cloudQuestionCounts[item.setId]}問`
-                          : cloudQuestionCountLoading[item.setId]
-                            ? "読み込み中..."
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-3 top-3 h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        deleteQuestionSetFromCloud(item.setId);
+                      }}
+                      aria-label={`delete ${item.setId}`}
+                    >
+                      <XCircleIcon className="h-4 w-4" />
+                    </Button>
+                    <CardHeader className="pb-3 pr-12">
+                      <CardTitle className="flex items-center gap-3 truncate text-base">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
+                          <BookOpenIcon className="h-5 w-5 text-primary" />
+                        </div>
+                        <span className="truncate" title={item.setId}>
+                          {item.setId}
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="min-w-0 space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          問題数:{" "}
+                          {cloudQuestionCounts[item.setId] !== undefined
+                            ? `${cloudQuestionCounts[item.setId]}問`
                             : "読み込み中..."}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">最終更新: {formatDate(item.lastModified)}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        </p>
+
+                        {/* Trial info */}
+                        <div className="flex items-center gap-2 pt-2">
+                          <HistoryIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {trialCount > 0 ? `${trialCount}件の履歴` : "履歴なし"}
+                          </span>
+                          {hasActiveTrial && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                              進行中
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
@@ -522,6 +768,152 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                     disabled={!uploadJsonText || !uploadSetId.trim()}
                   >
                     アップロード
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Trial Selection Modal */}
+        {selectedSetId && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeTrialModal();
+              }
+            }}
+          >
+            <Card className="w-full max-w-lg border-2 shadow-xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <BookOpenIcon className="h-6 w-6 text-primary" />
+                  {selectedSetId}
+                </CardTitle>
+                {selectedSetQuestionSet && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedSetQuestionSet.questions.length}問
+                  </p>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {trialModalLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    読み込み中...
+                  </div>
+                ) : (
+                  <>
+                    {/* New Trial Button */}
+                    <Button
+                      className="w-full h-12 shadow-md hover:shadow-lg transition-all"
+                      onClick={handleCreateNewTrial}
+                      disabled={creatingTrial || trialModalActiveId != null}
+                    >
+                      <PlusCircleIcon className="mr-2 h-5 w-5" />
+                      {trialModalActiveId
+                        ? "進行中のトライアルがあります"
+                        : "新しいトライアルを開始"}
+                    </Button>
+
+                    {/* Trial List */}
+                    {trialModalTrials.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                          <HistoryIcon className="h-4 w-4" />
+                          トライアル履歴
+                        </h3>
+                        <ScrollArea className="max-h-[300px]">
+                          <div className="space-y-2">
+                            {trialModalTrials.map((trial) => {
+                              const isActive = trial.trialId === trialModalActiveId;
+                              const isCompleted = trial.status === "completed";
+
+                              return (
+                                <div
+                                  key={trial.trialId}
+                                  className={`rounded-lg border-2 p-4 transition-all ${
+                                    isActive
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:border-primary/50"
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-medium">
+                                          受験開始: {formatDate(trial.startedAt)}
+                                        </span>
+                                        {isActive && (
+                                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                            進行中
+                                          </span>
+                                        )}
+                                        {isCompleted && (
+                                          <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success">
+                                            完了
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground mb-2">
+                                        {trial.summary?.durationSeconds != null && (
+                                          <span>
+                                            所要時間: {formatDuration(trial.summary.durationSeconds)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <SummaryBadges summary={trial.summary} />
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <Button
+                                        size="sm"
+                                        variant={isActive ? "default" : "outline"}
+                                        className="h-8"
+                                        onClick={() => selectTrial(trial)}
+                                      >
+                                        {isActive ? (
+                                          <>
+                                            <PlayIcon className="mr-1 h-3.5 w-3.5" />
+                                            続ける
+                                          </>
+                                        ) : (
+                                          "閲覧"
+                                        )}
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 text-destructive hover:text-destructive"
+                                        onClick={() => handleDeleteTrial(trial.trialId)}
+                                        disabled={deletingTrialId === trial.trialId}
+                                      >
+                                        <TrashIcon className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
+
+                    {trialModalTrials.length === 0 && (
+                      <div className="text-center py-4 text-muted-foreground text-sm">
+                        まだトライアル履歴がありません
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    className="w-full h-11 bg-transparent hover:bg-muted/50 transition-all"
+                    onClick={closeTrialModal}
+                  >
+                    閉じる
                   </Button>
                 </div>
               </CardContent>
