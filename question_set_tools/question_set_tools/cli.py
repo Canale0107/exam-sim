@@ -96,12 +96,40 @@ def _cmd_scrape(args: argparse.Namespace) -> int:
 
     # Keep exported order stable: follow URL list order
     questions = [normalize_question_dict(scraped_by_url[u]) for u in urls if u in scraped_by_url]
-    out_obj = export_question_set(args.set_id, questions)
-    out_bytes = json.dumps(out_obj, ensure_ascii=False, indent=2).encode("utf-8")
 
-    Path(args.out).write_bytes(out_bytes)
+    out_path = Path(args.out)
+    split_size = args.split_size
 
-    print(f"done: ok={ok}, fail={fail}, questions={len(questions)} -> {args.out}", file=sys.stderr)
+    if split_size and split_size > 0 and len(questions) > split_size:
+        # Split questions into chunks
+        chunks = [questions[i : i + split_size] for i in range(0, len(questions), split_size)]
+        out_files: list[str] = []
+        # Derive base name: foo.questions.json -> foo-1.questions.json
+        stem = out_path.stem  # e.g. "AWS-SAP-C02.questions"
+        if stem.endswith(".questions"):
+            base = stem[: -len(".questions")]
+            suffix = ".questions.json"
+        else:
+            base = stem
+            suffix = out_path.suffix or ".json"
+        for idx, chunk in enumerate(chunks, start=1):
+            chunk_set_id = f"{args.set_id}-{idx}"
+            chunk_out = out_path.parent / f"{base}-{idx}{suffix}"
+            out_obj = export_question_set(chunk_set_id, chunk)
+            out_bytes = json.dumps(out_obj, ensure_ascii=False, indent=2).encode("utf-8")
+            chunk_out.write_bytes(out_bytes)
+            out_files.append(str(chunk_out))
+        print(
+            f"done: ok={ok}, fail={fail}, questions={len(questions)} -> {len(chunks)} files ({split_size} each)",
+            file=sys.stderr,
+        )
+        for f in out_files:
+            print(f"  {f}", file=sys.stderr)
+    else:
+        out_obj = export_question_set(args.set_id, questions)
+        out_bytes = json.dumps(out_obj, ensure_ascii=False, indent=2).encode("utf-8")
+        out_path.write_bytes(out_bytes)
+        print(f"done: ok={ok}, fail={fail}, questions={len(questions)} -> {args.out}", file=sys.stderr)
     return 0 if fail == 0 else 1
 
 
@@ -132,6 +160,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_scrape.add_argument("--no-resume", action="store_true", help="ignore existing cache even if provided")
     p_scrape.add_argument("--overwrite", action="store_true", help="overwrite cached entries")
+    p_scrape.add_argument(
+        "--split-size",
+        type=int,
+        default=None,
+        help="split output into multiple files with N questions each (e.g. --split-size 25)",
+    )
     p_scrape.add_argument("--user-agent", default=FetchConfig().user_agent)
     p_scrape.add_argument("--timeout-s", type=int, default=FetchConfig().timeout_s)
     p_scrape.add_argument("--min-delay-s", type=float, default=FetchConfig().min_delay_s)

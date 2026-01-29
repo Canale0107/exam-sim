@@ -48,3 +48,23 @@ uv run python -m question_set_tools.cli scrape \
   --cache tmp/scrape-cache.json
 ```
 
+### 問題集の分割
+
+`--split-size` オプションで、指定した問題数ごとに複数ファイルに分割できます:
+
+```bash
+uv run python -m question_set_tools.cli scrape \
+  --set-id AWS-SAP-C02 \
+  --urls tmp/urls.txt \
+  --out output/AWS-SAP-C02.questions.json \
+  --cache tmp/scrape-cache.json \
+  --split-size 25
+```
+
+例: 100問を `--split-size 25` で分割した場合:
+
+- `output/AWS-SAP-C02-1.questions.json` (25問, set_id: `AWS-SAP-C02-1`)
+- `output/AWS-SAP-C02-2.questions.json` (25問, set_id: `AWS-SAP-C02-2`)
+- `output/AWS-SAP-C02-3.questions.json` (25問, set_id: `AWS-SAP-C02-3`)
+- `output/AWS-SAP-C02-4.questions.json` (25問, set_id: `AWS-SAP-C02-4`)
+
