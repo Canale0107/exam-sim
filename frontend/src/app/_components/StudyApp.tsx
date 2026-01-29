@@ -552,7 +552,7 @@ export function StudyApp() {
         <ExamSidebar
           questionSet={qset}
           progress={progress}
-          currentQuestionIndex={current.index}
+          currentQuestionIndex={view === "results" ? -1 : current.index}
           trialStartedAt={trialInfo?.startedAt ?? null}
           isReadOnly={isReadOnly}
           onQuestionSelect={gotoIndex}
