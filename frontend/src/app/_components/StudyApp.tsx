@@ -200,7 +200,8 @@ export function StudyApp() {
       queueMicrotask(() => {
         setTrialInfo(explicitTrial);
         setProgress(normalized);
-        setView("exam");
+        // Show results screen first for completed trials
+        setView(explicitTrial.status === "completed" ? "results" : "exam");
       });
 
       // Still fetch from remote to sync if needed, but don't overwrite trialInfo
