@@ -58,13 +58,13 @@ uv run python -m question_set_tools.cli scrape \
   --urls tmp/urls.txt \
   --out output/AWS-SAP-C02.questions.json \
   --cache tmp/scrape-cache.json \
-  --split-size 25
+  --split-size 75
 ```
 
-例: 100問を `--split-size 25` で分割した場合:
+例: 100問を `--split-size 75` で分割した場合:
 
-- `output/AWS-SAP-C02-1.questions.json` (25問, set_id: `AWS-SAP-C02-1`)
-- `output/AWS-SAP-C02-2.questions.json` (25問, set_id: `AWS-SAP-C02-2`)
-- `output/AWS-SAP-C02-3.questions.json` (25問, set_id: `AWS-SAP-C02-3`)
-- `output/AWS-SAP-C02-4.questions.json` (25問, set_id: `AWS-SAP-C02-4`)
+- `output/AWS-SAP-C02-1.questions.json` (75問, set_id: `AWS-SAP-C02-1`)
+- `output/AWS-SAP-C02-2.questions.json` (75問, set_id: `AWS-SAP-C02-2`)
+- `output/AWS-SAP-C02-3.questions.json` (75問, set_id: `AWS-SAP-C02-3`)
+- `output/AWS-SAP-C02-4.questions.json` (75問, set_id: `AWS-SAP-C02-4`)
 
