@@ -7,7 +7,6 @@ import type { Question, QuestionSet } from "@/lib/questionSet";
 import { loadQuestionSetFromJsonText } from "@/lib/questionSet";
 import type { Attempt, ProgressState, TrialStatus, LocalTrialInfo } from "@/lib/progress";
 import {
-  clearProgress,
   emptyProgressState,
   loadProgress,
   saveProgress,
@@ -15,7 +14,6 @@ import {
   saveActiveTrialInfo,
   loadTrialProgress,
   saveTrialProgress,
-  clearTrialProgress,
 } from "@/lib/progress";
 import {
   apiBaseUrl,
@@ -467,45 +465,6 @@ export function StudyApp() {
     );
   }
 
-  function onResetToUnanswered() {
-    if (!current || isReadOnly) return;
-    setProgress((prev) =>
-      upsertAttempt(prev, current.question.id, {
-        selectedChoiceIds: null,
-        isCorrect: null,
-        answeredAt: null,
-      })
-    );
-  }
-
-  async function onClearProgress() {
-    if (!qset) return;
-    if (isReadOnly) return;
-
-    if (confirm("進捗をリセットしてもよろしいですか？この操作は取り消せません。")) {
-      if (trialInfo) {
-        clearTrialProgress({ userId, setId: qset.set_id, trialId: trialInfo.trialId });
-        saveActiveTrialInfo({ userId, setId: qset.set_id, info: null });
-        setTrialInfo(null);
-      }
-
-      clearProgress({ userId, setId: qset.set_id });
-      skipNextRemoteSaveRef.current = true;
-      setProgress(emptyProgressState());
-
-      const base = apiBaseUrl();
-      if (!base) return;
-      if (userId === "local") return;
-
-      const url = `${base.replace(/\/$/, "")}/progress?setId=${encodeURIComponent(qset.set_id)}`;
-      try {
-        await fetch(url, { method: "DELETE", headers: { ...(await authHeader()) } });
-      } catch {
-        // ignore
-      }
-    }
-  }
-
   function onBackToHome() {
     if (confirm("ホームに戻りますか？進捗は保存されます。")) {
       window.sessionStorage.removeItem(SESSION_LAST_QSET_JSON_KEY);
@@ -597,7 +556,6 @@ export function StudyApp() {
           trialStartedAt={trialInfo?.startedAt ?? null}
           isReadOnly={isReadOnly}
           onQuestionSelect={gotoIndex}
-          onReset={onClearProgress}
           onBackToHome={onBackToHome}
         />
       </aside>
@@ -655,7 +613,6 @@ export function StudyApp() {
                 onAnswerSubmit={onAnswer}
                 onFlagToggle={onToggleFlagged}
                 onNoteChange={onChangeNote}
-                onResetAnswer={onResetToUnanswered}
               />
             </div>
           ) : (

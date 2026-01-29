@@ -30,7 +30,6 @@ interface QuestionDisplayProps {
   onAnswerSubmit: (selectedChoiceIds: string[]) => void;
   onFlagToggle: (flagged: boolean) => void;
   onNoteChange: (note: string) => void;
-  onResetAnswer: () => void;
 }
 
 export function QuestionDisplay({
@@ -47,7 +46,6 @@ export function QuestionDisplay({
   onAnswerSubmit,
   onFlagToggle,
   onNoteChange,
-  onResetAnswer,
 }: QuestionDisplayProps) {
   const [selectedChoiceIds, setSelectedChoiceIds] = useState<string[]>(
     attempt?.selectedChoiceIds ?? []
@@ -80,11 +78,6 @@ export function QuestionDisplay({
   const handleSubmit = () => {
     if (selectedChoiceIds.length === 0) return;
     onAnswerSubmit(selectedChoiceIds);
-  };
-
-  const handleReset = () => {
-    setSelectedChoiceIds([]);
-    onResetAnswer();
   };
 
   const getChoiceStatus = (choiceId: string) => {
@@ -382,16 +375,6 @@ export function QuestionDisplay({
         </Card>
       )}
 
-      {/* Reset Button */}
-      {isAnswered && !isReadOnly && (
-        <Button
-          variant="outline"
-          onClick={handleReset}
-          className="w-full h-11 bg-transparent hover:bg-muted/50 transition-all"
-        >
-          未回答に戻す
-        </Button>
-      )}
     </div>
   );
 }

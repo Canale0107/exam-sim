@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { QuestionSet } from "@/lib/questionSet";
 import type { ProgressState } from "@/lib/progress";
-import { HomeIcon, RotateCcwIcon } from "@/components/icons";
+import { HomeIcon } from "@/components/icons";
 
 interface ExamSidebarProps {
   questionSet: QuestionSet;
@@ -13,7 +13,6 @@ interface ExamSidebarProps {
   trialStartedAt: string | null;
   isReadOnly: boolean;
   onQuestionSelect: (index: number) => void;
-  onReset: () => void;
   onBackToHome: () => void;
 }
 
@@ -39,7 +38,6 @@ export function ExamSidebar({
   trialStartedAt,
   isReadOnly,
   onQuestionSelect,
-  onReset,
   onBackToHome,
 }: ExamSidebarProps) {
   return (
@@ -96,26 +94,14 @@ export function ExamSidebar({
       </ScrollArea>
 
       <div className="border-t border-sidebar-border p-6 bg-sidebar-accent/30">
-        <div className="space-y-2.5">
-          {!isReadOnly && (
-            <Button
-              variant="outline"
-              className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"
-              onClick={onReset}
-            >
-              <RotateCcwIcon className="mr-2 h-4 w-4" />
-              進捗をリセット
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"
-            onClick={onBackToHome}
-          >
-            <HomeIcon className="mr-2 h-4 w-4" />
-            ホームに戻る
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"
+          onClick={onBackToHome}
+        >
+          <HomeIcon className="mr-2 h-4 w-4" />
+          ホームに戻る
+        </Button>
       </div>
     </div>
   );
