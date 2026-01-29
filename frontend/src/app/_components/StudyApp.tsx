@@ -25,7 +25,7 @@ import {
   isCognitoConfigured,
   storeTokens,
 } from "@/lib/awsAuth";
-import { listTrials, createTrial, getTrial, updateTrial, completeTrial } from "@/lib/trialApi";
+import { listTrials, getTrial, updateTrial, completeTrial } from "@/lib/trialApi";
 import { QuestionSetGrid } from "@/components/question-set-grid";
 import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
@@ -475,74 +475,6 @@ export function StudyApp() {
     }
   }
 
-  async function onCompleteTrial() {
-    if (!qset || !trialInfo) return;
-    if (trialInfo.status === "completed") return;
-
-    const totalQuestions = qset.questions.length;
-
-    if (confirm(`受験開始日 ${formatTrialDate(trialInfo.startedAt)} のトライアルを完了しますか？完了後は変更できなくなります。`)) {
-      const base = apiBaseUrl();
-      if (base && userId !== "local") {
-        try {
-          await completeTrial(trialInfo.trialId, { setId: qset.set_id, totalQuestions });
-        } catch {
-          // ignore remote error
-        }
-      }
-
-      // Update local state
-      saveActiveTrialInfo({ userId, setId: qset.set_id, info: null });
-      setTrialInfo({ ...trialInfo, status: "completed" });
-    }
-  }
-
-  async function onStartNewTrial() {
-    if (!qset) return;
-
-    const base = apiBaseUrl();
-    const totalQuestions = qset.questions.length;
-    const now = new Date().toISOString();
-
-    let newTrialId = now;
-    let newTrialNumber = (trialInfo?.trialNumber ?? 0) + 1;
-
-    if (base && userId !== "local") {
-      try {
-        const res = await createTrial({ setId: qset.set_id, totalQuestions });
-        newTrialId = res.trialId;
-        newTrialNumber = res.trialNumber;
-      } catch (e) {
-        // Check if it's an active trial exists error
-        const msg = e instanceof Error ? e.message : "";
-        if (msg.startsWith("active_trial_exists:")) {
-          alert("進行中のトライアルがあります。先にそれを完了させてください。");
-          return;
-        }
-        // For other errors, continue with local-only creation
-      }
-    }
-
-    const newState = emptyProgressState();
-    const newInfo: LocalTrialInfo = {
-      trialId: newTrialId,
-      trialNumber: newTrialNumber,
-      status: "in_progress",
-      startedAt: now,
-    };
-
-    saveActiveTrialInfo({ userId, setId: qset.set_id, info: newInfo });
-    saveTrialProgress({ userId, setId: qset.set_id, trialId: newTrialId, state: newState });
-
-    setTrialInfo({
-      trialId: newTrialId,
-      trialNumber: newTrialNumber,
-      status: "in_progress",
-      startedAt: now,
-    });
-    setProgress(newState);
-    setView("exam");
-  }
 
   if (!qset) {
     return <QuestionSetGrid onSetSelected={handleSetSelected} />;
@@ -571,14 +503,45 @@ export function StudyApp() {
 
   const isLastQuestion = current.index >= totalQuestions - 1;
 
-  function onFinish() {
+  async function onFinish() {
     if (!qset) return;
-    if (unansweredQuestions > 0) {
-      const ok = confirm(
-        `未回答が ${unansweredQuestions} 問あります。解答を終了して結果を表示しますか？`
-      );
-      if (!ok) return;
+
+    // If read-only (viewing completed trial), just show results
+    if (isReadOnly) {
+      setView("results");
+      return;
     }
+
+    // Build confirmation message
+    let message = "";
+    if (unansweredQuestions > 0) {
+      message = `未回答が ${unansweredQuestions} 問あります。\n\n`;
+    }
+
+    if (trialInfo) {
+      message += "解答を終了すると、結果が記録され、このトライアルの解答を変更できなくなります。\n\n終了してもよろしいですか？";
+    } else {
+      message += "解答を終了して結果を表示しますか？";
+    }
+
+    if (!confirm(message)) return;
+
+    // Complete the trial if there is one
+    if (trialInfo && trialInfo.status !== "completed") {
+      const base = apiBaseUrl();
+      if (base && userId !== "local") {
+        try {
+          await completeTrial(trialInfo.trialId, { setId: qset.set_id, totalQuestions });
+        } catch {
+          // ignore remote error
+        }
+      }
+
+      // Update local state
+      saveActiveTrialInfo({ userId, setId: qset.set_id, info: null });
+      setTrialInfo({ ...trialInfo, status: "completed" });
+    }
+
     setView("results");
   }
 
@@ -668,8 +631,6 @@ export function StudyApp() {
               trialStatus={trialInfo?.status ?? null}
               onBackToExam={() => setView("exam")}
               onBackToHome={onBackToHome}
-              onCompleteTrial={onCompleteTrial}
-              onStartNewTrial={onStartNewTrial}
             />
           )}
         </div>

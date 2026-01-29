@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatsCard } from "@/components/stats-card";
 import { Button } from "@/components/ui/button";
-import { BookOpenIcon, CheckCircle2Icon, TrendingUpIcon, XCircleIcon, PlayIcon, PlusCircleIcon } from "@/components/icons";
+import { BookOpenIcon, CheckCircle2Icon, TrendingUpIcon, XCircleIcon } from "@/components/icons";
 import type { TrialStatus } from "@/lib/progress";
 
 type Segment = {
@@ -138,8 +138,6 @@ export function ResultsScreen(props: {
   trialStatus: TrialStatus | null;
   onBackToExam: () => void;
   onBackToHome: () => void;
-  onCompleteTrial?: () => void;
-  onStartNewTrial?: () => void;
 }) {
   const segments: Segment[] = [
     { label: "正解", value: props.correctAnswers, className: "text-success", dotClassName: "bg-success" },
@@ -159,7 +157,6 @@ export function ResultsScreen(props: {
   ];
 
   const isCompleted = props.trialStatus === "completed";
-  const isInProgress = props.trialStatus === "in_progress";
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
@@ -220,52 +217,6 @@ export function ResultsScreen(props: {
           </CardContent>
         </Card>
       </div>
-
-      {/* Trial Actions */}
-      {props.trialStartedAt !== null && (
-        <div className="mb-8">
-          <Card className="border-2 shadow-md">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <PlayIcon className="h-6 w-6 text-muted-foreground" />
-                トライアル操作
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                {isInProgress && props.onCompleteTrial && (
-                  <Button
-                    onClick={props.onCompleteTrial}
-                    className="flex-1 h-12 shadow-md hover:shadow-lg transition-all bg-success hover:bg-success/90"
-                  >
-                    <CheckCircle2Icon className="mr-2 h-5 w-5" />
-                    トライアルを完了する
-                  </Button>
-                )}
-                {isCompleted && props.onStartNewTrial && (
-                  <Button
-                    onClick={props.onStartNewTrial}
-                    className="flex-1 h-12 shadow-md hover:shadow-lg transition-all"
-                  >
-                    <PlusCircleIcon className="mr-2 h-5 w-5" />
-                    新しいトライアルを開始
-                  </Button>
-                )}
-              </div>
-              {isInProgress && (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  トライアルを完了すると、結果が記録され、この回答を変更できなくなります。
-                </p>
-              )}
-              {isCompleted && (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  新しいトライアルを開始すると、最初から問題を解き始めます。過去のトライアルは履歴として残ります。
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Button
