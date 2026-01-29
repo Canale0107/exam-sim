@@ -194,7 +194,7 @@ export function TrialHistoryPanel({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-medium">
-                      トライアル #{trial.trialNumber}
+                      受験開始: {formatDate(trial.startedAt)}
                     </span>
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${
@@ -207,10 +207,9 @@ export function TrialHistoryPanel({
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground mb-2">
-                    開始: {formatDate(trial.startedAt)}
                     {trial.completedAt && (
                       <>
-                        {" "}/ 完了: {formatDate(trial.completedAt)}
+                        完了: {formatDate(trial.completedAt)}
                       </>
                     )}
                     {trial.summary?.durationSeconds != null && (

@@ -110,6 +110,21 @@ function ResultDonutChart(props: {
   );
 }
 
+function formatTrialDate(isoString: string): string {
+  try {
+    const date = new Date(isoString);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    const ss = String(date.getSeconds()).padStart(2, "0");
+    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+  } catch {
+    return isoString;
+  }
+}
+
 export function ResultsScreen(props: {
   title: string;
   totalQuestions: number;
@@ -119,7 +134,7 @@ export function ResultsScreen(props: {
   unknownAnswers: number;
   unansweredQuestions: number;
   accuracyRate: number;
-  trialNumber: number | null;
+  trialStartedAt: string | null;
   trialStatus: TrialStatus | null;
   onBackToExam: () => void;
   onBackToHome: () => void;
@@ -151,13 +166,13 @@ export function ResultsScreen(props: {
       <div className="mb-8">
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight">結果</h1>
-          {props.trialNumber !== null && (
+          {props.trialStartedAt !== null && (
             <span className={`text-sm px-3 py-1 rounded-full ${
               isCompleted
                 ? "bg-success/10 text-success"
                 : "bg-primary/10 text-primary"
             }`}>
-              トライアル #{props.trialNumber}
+              受験開始: {formatTrialDate(props.trialStartedAt)}
               {isCompleted && " (完了)"}
             </span>
           )}
@@ -207,7 +222,7 @@ export function ResultsScreen(props: {
       </div>
 
       {/* Trial Actions */}
-      {props.trialNumber !== null && (
+      {props.trialStartedAt !== null && (
         <div className="mb-8">
           <Card className="border-2 shadow-md">
             <CardHeader className="pb-4">

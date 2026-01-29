@@ -10,18 +10,33 @@ interface ExamSidebarProps {
   questionSet: QuestionSet;
   progress: ProgressState;
   currentQuestionIndex: number;
-  trialNumber: number | null;
+  trialStartedAt: string | null;
   isReadOnly: boolean;
   onQuestionSelect: (index: number) => void;
   onReset: () => void;
   onBackToHome: () => void;
 }
 
+function formatTrialDate(isoString: string): string {
+  try {
+    const date = new Date(isoString);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    const ss = String(date.getSeconds()).padStart(2, "0");
+    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+  } catch {
+    return isoString;
+  }
+}
+
 export function ExamSidebar({
   questionSet,
   progress,
   currentQuestionIndex,
-  trialNumber,
+  trialStartedAt,
   isReadOnly,
   onQuestionSelect,
   onReset,
@@ -30,14 +45,14 @@ export function ExamSidebar({
   return (
     <div className="flex h-full flex-col bg-sidebar">
       {/* Trial Header */}
-      {trialNumber !== null && (
+      {trialStartedAt !== null && (
         <div className="border-b border-sidebar-border px-6 py-4">
           <div className={`text-sm font-medium px-3 py-1.5 rounded-lg text-center ${
             isReadOnly
               ? "bg-success/10 text-success"
               : "bg-primary/10 text-primary"
           }`}>
-            トライアル #{trialNumber}
+            受験開始: {formatTrialDate(trialStartedAt)}
             {isReadOnly && " (閲覧のみ)"}
           </div>
         </div>

@@ -39,9 +39,25 @@ type AuthUser = { id: string; email: string | null; idToken: string | null };
 
 type TrialInfo = {
   trialId: string;
-  trialNumber: number;
+  trialNumber: number; // kept for internal use
   status: TrialStatus;
+  startedAt: string;
 };
+
+function formatTrialDate(isoString: string): string {
+  try {
+    const date = new Date(isoString);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    const ss = String(date.getSeconds()).padStart(2, "0");
+    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+  } catch {
+    return isoString;
+  }
+}
 
 function clamp(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
@@ -186,6 +202,7 @@ export function StudyApp() {
           trialId: localTrialInfo.trialId,
           trialNumber: localTrialInfo.trialNumber,
           status: localTrialInfo.status,
+          startedAt: localTrialInfo.startedAt,
         });
         setProgress(normalized);
         setView("exam");
@@ -238,6 +255,7 @@ export function StudyApp() {
             trialId: trialsRes.activeTrialId,
             trialNumber: trialRes.trialNumber,
             status: trialRes.status,
+            startedAt: trialRes.startedAt,
           });
           setProgress(normalizeProgressForSet(qset, merged));
 
@@ -288,6 +306,7 @@ export function StudyApp() {
             trialId: remote.trialId,
             trialNumber: remote.trialNumber ?? 1,
             status: remote.trialStatus ?? "in_progress",
+            startedAt: (remote as { startedAt?: string }).startedAt ?? new Date().toISOString(),
           });
         }
 
@@ -462,7 +481,7 @@ export function StudyApp() {
 
     const totalQuestions = qset.questions.length;
 
-    if (confirm(`トライアル #${trialInfo.trialNumber} を完了しますか？完了後は変更できなくなります。`)) {
+    if (confirm(`受験開始日 ${formatTrialDate(trialInfo.startedAt)} のトライアルを完了しますか？完了後は変更できなくなります。`)) {
       const base = apiBaseUrl();
       if (base && userId !== "local") {
         try {
@@ -473,12 +492,6 @@ export function StudyApp() {
       }
 
       // Update local state
-      const updatedInfo: LocalTrialInfo = {
-        trialId: trialInfo.trialId,
-        trialNumber: trialInfo.trialNumber,
-        status: "completed",
-        startedAt: new Date().toISOString(),
-      };
       saveActiveTrialInfo({ userId, setId: qset.set_id, info: null });
       setTrialInfo({ ...trialInfo, status: "completed" });
     }
@@ -525,6 +538,7 @@ export function StudyApp() {
       trialId: newTrialId,
       trialNumber: newTrialNumber,
       status: "in_progress",
+      startedAt: now,
     });
     setProgress(newState);
     setView("exam");
@@ -576,7 +590,7 @@ export function StudyApp() {
           questionSet={qset}
           progress={progress}
           currentQuestionIndex={current.index}
-          trialNumber={trialInfo?.trialNumber ?? null}
+          trialStartedAt={trialInfo?.startedAt ?? null}
           isReadOnly={isReadOnly}
           onQuestionSelect={gotoIndex}
           onReset={onClearProgress}
@@ -598,7 +612,7 @@ export function StudyApp() {
                     ? "bg-success/10 text-success"
                     : "bg-primary/10 text-primary"
                 }`}>
-                  トライアル #{trialInfo.trialNumber}
+                  受験開始: {formatTrialDate(trialInfo.startedAt)}
                   {trialInfo.status === "completed" && " (閲覧のみ)"}
                 </div>
               )}
@@ -650,7 +664,7 @@ export function StudyApp() {
               unknownAnswers={unknownAnswers}
               unansweredQuestions={unansweredQuestions}
               accuracyRate={accuracyRate}
-              trialNumber={trialInfo?.trialNumber ?? null}
+              trialStartedAt={trialInfo?.startedAt ?? null}
               trialStatus={trialInfo?.status ?? null}
               onBackToExam={() => setView("exam")}
               onBackToHome={onBackToHome}

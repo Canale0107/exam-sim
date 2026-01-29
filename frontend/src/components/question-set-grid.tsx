@@ -30,6 +30,7 @@ type TrialInfo = {
   trialId: string;
   trialNumber: number;
   status: TrialStatus;
+  startedAt: string;
 };
 
 interface QuestionSetGridProps {
@@ -372,6 +373,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       trialId: trial.trialId,
       trialNumber: trial.trialNumber,
       status: trial.status,
+      startedAt: trial.startedAt,
     };
     onSetSelected(selectedSetQuestionSet, trialInfo);
     closeTrialModal();
@@ -389,6 +391,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         trialId: res.trialId,
         trialNumber: res.trialNumber,
         status: "in_progress",
+        startedAt: res.startedAt,
       };
       onSetSelected(selectedSetQuestionSet, trialInfo);
       closeTrialModal();
@@ -839,7 +842,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className="font-medium">
-                                          トライアル #{trial.trialNumber}
+                                          受験開始: {formatDate(trial.startedAt)}
                                         </span>
                                         {isActive && (
                                           <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
@@ -853,10 +856,9 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                                         )}
                                       </div>
                                       <div className="text-xs text-muted-foreground mb-2">
-                                        {formatDate(trial.startedAt)}
                                         {trial.summary?.durationSeconds != null && (
-                                          <span className="ml-2">
-                                            ({formatDuration(trial.summary.durationSeconds)})
+                                          <span>
+                                            所要時間: {formatDuration(trial.summary.durationSeconds)}
                                           </span>
                                         )}
                                       </div>
