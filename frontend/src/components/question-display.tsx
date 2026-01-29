@@ -246,19 +246,19 @@ export function QuestionDisplay({
               type="button"
               onClick={() => handleChoiceClick(choice.id)}
               disabled={isAnswered || isReadOnly}
-              className={`group relative w-full rounded-xl border-2 p-5 text-left transition-all duration-200 ${
+              className={`group relative w-full rounded-xl border-2 p-5 text-left ${isAnswered || isReadOnly ? "" : "transition-all duration-200"} ${
                 status === "correct"
                   ? "border-success bg-success/10 shadow-sm shadow-success/20"
                   : status === "incorrect"
                     ? "border-destructive bg-destructive/10 shadow-sm shadow-destructive/20"
                     : isSelected
-                      ? "border-primary bg-primary/10 shadow-sm shadow-primary/10 hover:border-primary/80"
-                      : "border-border bg-card hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm"
+                      ? `border-primary bg-primary/10 shadow-sm shadow-primary/10${isAnswered || isReadOnly ? "" : " hover:border-primary/80"}`
+                      : `border-border bg-card${isAnswered || isReadOnly ? "" : " hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm"}`
               } ${isAnswered || isReadOnly ? "cursor-default" : "cursor-pointer active:scale-[0.98]"}`}
             >
               <div className="flex items-start gap-4">
                 <div
-                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded transition-all ${
+                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded ${isAnswered || isReadOnly ? "" : "transition-all"} ${
                     isMultiple ? "rounded-md" : "rounded-full"
                   } border-2 ${
                     status === "correct"
@@ -267,7 +267,7 @@ export function QuestionDisplay({
                         ? "border-destructive bg-destructive shadow-sm"
                         : isSelected
                           ? "border-primary bg-primary shadow-sm"
-                          : "border-muted-foreground/50 group-hover:border-primary/50"
+                          : `border-muted-foreground/50${isAnswered || isReadOnly ? "" : " group-hover:border-primary/50"}`
                   }`}
                 >
                   {isSelected && status === "default" && (

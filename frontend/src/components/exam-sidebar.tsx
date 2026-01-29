@@ -72,16 +72,16 @@ export function ExamSidebar({
                   key={question.id}
                   type="button"
                   onClick={() => onQuestionSelect(index)}
-                  className={`relative flex aspect-square items-center justify-center rounded-lg border-2 text-sm font-semibold transition-all duration-200 ${
+                  className={`relative flex aspect-square items-center justify-center rounded-lg border-2 text-sm font-semibold ${isReadOnly ? "" : "transition-all duration-200"} ${
                     isCurrent
                       ? "border-primary bg-primary text-primary-foreground shadow-lg scale-105 z-10"
                       : answer && hasAnswer
                         ? answer.isCorrect === true
-                          ? "border-success/60 bg-success/15 text-success hover:border-success hover:bg-success/25 hover:scale-105"
+                          ? `border-success/60 bg-success/15 text-success${isReadOnly ? "" : " hover:border-success hover:bg-success/25 hover:scale-105"}`
                           : answer.isCorrect === false
-                            ? "border-destructive/60 bg-destructive/15 text-destructive hover:border-destructive hover:bg-destructive/25 hover:scale-105"
-                            : "border-warning/60 bg-warning/15 text-warning hover:border-warning hover:bg-warning/25 hover:scale-105"
-                        : "border-sidebar-border bg-sidebar-accent text-sidebar-foreground hover:border-primary/50 hover:bg-primary/10 hover:scale-105"
+                            ? `border-destructive/60 bg-destructive/15 text-destructive${isReadOnly ? "" : " hover:border-destructive hover:bg-destructive/25 hover:scale-105"}`
+                            : `border-warning/60 bg-warning/15 text-warning${isReadOnly ? "" : " hover:border-warning hover:bg-warning/25 hover:scale-105"}`
+                        : `border-sidebar-border bg-sidebar-accent text-sidebar-foreground${isReadOnly ? "" : " hover:border-primary/50 hover:bg-primary/10 hover:scale-105"}`
                   }`}
                 >
                   {index + 1}
