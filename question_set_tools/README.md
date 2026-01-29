@@ -38,6 +38,21 @@ uv run python -m question_set_tools.cli collect-urls \
   --out tmp/urls.txt
 ```
 
+ネットワークが不安定でタイムアウトする場合は、リトライ回数やタイムアウトを調整したり、失敗した一覧ページを別ファイルに出力して後で再実行できます:
+
+```bash
+uv run python -m question_set_tools.cli collect-urls \
+  --category amazon/ \
+  --max-page 575 \
+  --keyword SAP-C02 \
+  --out tmp/urls.txt \
+  --failed-out tmp/failed-list-pages.txt \
+  --retries 6 \
+  --timeout-s 40 \
+  --connect-timeout-s 15 \
+  --max-workers 6
+```
+
 スクレイプ（URLリスト → questions.json）:
 
 ```bash

@@ -17,6 +17,7 @@ from .http import FetchConfig, polite_get
 @dataclass(frozen=True)
 class CollectUrlsConfig:
     max_workers: int = 10
+    continue_on_error: bool = True
 
 
 def normalize_discussion_url(base_url: str, href: str) -> str:
@@ -36,6 +37,7 @@ def collect_discussion_urls_from_list_pages(
     target_exam_keyword: str,
     fetch: FetchConfig,
     cfg: CollectUrlsConfig = CollectUrlsConfig(),
+    failed_list_pages_out: list[str] | None = None,
 ) -> list[str]:
     """
     list_page_urls: e.g. https://www.examtopics.com/discussions/amazon-aws/1
@@ -60,14 +62,26 @@ def collect_discussion_urls_from_list_pages(
         return urls
 
     with ThreadPoolExecutor(max_workers=cfg.max_workers) as ex:
-        futures = [ex.submit(fetch_one, u) for u in list_page_urls]
+        futures = []
+        future_to_url: dict[object, str] = {}
+        for u in list_page_urls:
+            fut = ex.submit(fetch_one, u)
+            futures.append(fut)
+            future_to_url[fut] = u
         for fut in tqdm(
             as_completed(futures),
             total=len(futures),
             desc="collecting discussion urls",
             unit="page",
         ):
-            out.extend(fut.result())
+            try:
+                out.extend(fut.result())
+            except Exception:
+                u = future_to_url.get(fut)
+                if u and failed_list_pages_out is not None:
+                    failed_list_pages_out.append(u)
+                if not cfg.continue_on_error:
+                    raise
 
     # de-dup keep order
     seen = set()

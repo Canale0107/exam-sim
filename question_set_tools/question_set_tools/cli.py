@@ -16,16 +16,29 @@ def _cmd_collect_urls(args: argparse.Namespace) -> int:
 
     fetch = FetchConfig(
         user_agent=args.user_agent,
+        connect_timeout_s=args.connect_timeout_s,
         timeout_s=args.timeout_s,
         min_delay_s=args.min_delay_s,
         max_delay_s=args.max_delay_s,
+        retries=args.retries,
+        backoff_factor=args.backoff_factor,
     )
+    failed: list[str] = []
     urls = collect_discussion_urls_from_list_pages(
         list_page_urls=list_urls,
         target_exam_keyword=args.keyword,
         fetch=fetch,
-        cfg=CollectUrlsConfig(max_workers=args.max_workers),
+        cfg=CollectUrlsConfig(max_workers=args.max_workers, continue_on_error=not args.fail_fast),
+        failed_list_pages_out=failed,
     )
+
+    if failed:
+        print(
+            f"warning: {len(failed)}/{len(list_urls)} list pages failed; continuing with partial results",
+            file=sys.stderr,
+        )
+        if args.failed_out:
+            Path(args.failed_out).write_text("\n".join(failed) + "\n", encoding="utf-8")
 
     if args.out:
         Path(args.out).write_text("\n".join(urls) + "\n", encoding="utf-8")
@@ -61,9 +74,12 @@ def _cmd_scrape(args: argparse.Namespace) -> int:
 
     fetch = FetchConfig(
         user_agent=args.user_agent,
+        connect_timeout_s=args.connect_timeout_s,
         timeout_s=args.timeout_s,
         min_delay_s=args.min_delay_s,
         max_delay_s=args.max_delay_s,
+        retries=args.retries,
+        backoff_factor=args.backoff_factor,
     )
 
     cache_path = Path(args.cache) if args.cache else None
@@ -145,10 +161,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_collect.add_argument("--keyword", default="", help="filter by anchor text keyword (e.g. SAP-C02)")
     p_collect.add_argument("--max-workers", type=int, default=10)
     p_collect.add_argument("--user-agent", default=FetchConfig().user_agent)
+    p_collect.add_argument("--connect-timeout-s", type=float, default=FetchConfig().connect_timeout_s)
     p_collect.add_argument("--timeout-s", type=int, default=FetchConfig().timeout_s)
     p_collect.add_argument("--min-delay-s", type=float, default=FetchConfig().min_delay_s)
     p_collect.add_argument("--max-delay-s", type=float, default=FetchConfig().max_delay_s)
+    p_collect.add_argument("--retries", type=int, default=FetchConfig().retries)
+    p_collect.add_argument("--backoff-factor", type=float, default=FetchConfig().backoff_factor)
+    p_collect.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="abort on the first failed list page (default: continue)",
+    )
     p_collect.add_argument("--out", help="output path (txt). If omitted, prints to stdout.")
+    p_collect.add_argument(
+        "--failed-out",
+        help="optional path to write failed list page URLs (one per line)",
+    )
     p_collect.set_defaults(func=_cmd_collect_urls)
 
     p_scrape = sub.add_parser("scrape", help="Scrape discussions and export questions.json.")
@@ -167,9 +195,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="split output into multiple files with N questions each (e.g. --split-size 25)",
     )
     p_scrape.add_argument("--user-agent", default=FetchConfig().user_agent)
+    p_scrape.add_argument("--connect-timeout-s", type=float, default=FetchConfig().connect_timeout_s)
     p_scrape.add_argument("--timeout-s", type=int, default=FetchConfig().timeout_s)
     p_scrape.add_argument("--min-delay-s", type=float, default=FetchConfig().min_delay_s)
     p_scrape.add_argument("--max-delay-s", type=float, default=FetchConfig().max_delay_s)
+    p_scrape.add_argument("--retries", type=int, default=FetchConfig().retries)
+    p_scrape.add_argument("--backoff-factor", type=float, default=FetchConfig().backoff_factor)
     p_scrape.set_defaults(func=_cmd_scrape)
 
     return p
