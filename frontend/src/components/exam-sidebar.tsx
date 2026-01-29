@@ -97,16 +97,16 @@ export function ExamSidebar({
 
       <div className="border-t border-sidebar-border p-6 bg-sidebar-accent/30">
         <div className="space-y-2.5">
-          <Button
-            variant="outline"
-            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md disabled:opacity-50"
-            onClick={onReset}
-            disabled={isReadOnly}
-            title={isReadOnly ? "完了済みトライアルはリセットできません" : undefined}
-          >
-            <RotateCcwIcon className="mr-2 h-4 w-4" />
-            進捗をリセット
-          </Button>
+          {!isReadOnly && (
+            <Button
+              variant="outline"
+              className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"
+              onClick={onReset}
+            >
+              <RotateCcwIcon className="mr-2 h-4 w-4" />
+              進捗をリセット
+            </Button>
+          )}
           <Button
             variant="outline"
             className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"

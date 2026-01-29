@@ -126,6 +126,7 @@ export function StudyApp() {
   const [view, setView] = useState<"exam" | "results">("exam");
   const isLoadingRemoteRef = useRef(false);
   const skipNextRemoteSaveRef = useRef(false);
+  const explicitTrialSelectedRef = useRef<TrialInfo | null>(null);
 
   // Trial state
   const [trialInfo, setTrialInfo] = useState<TrialInfo | null>(null);
@@ -188,6 +189,44 @@ export function StudyApp() {
   // Load progress whenever user/set changes
   useEffect(() => {
     if (!qset) return;
+
+    // If a trial was explicitly selected (e.g., from trial history modal), use that
+    const explicitTrial = explicitTrialSelectedRef.current;
+    if (explicitTrial) {
+      explicitTrialSelectedRef.current = null; // Clear after use
+
+      // Load the explicitly selected trial's progress
+      const trialProgress = loadTrialProgress({ userId, setId: qset.set_id, trialId: explicitTrial.trialId });
+      const normalized = normalizeProgressForSet(qset, trialProgress);
+
+      queueMicrotask(() => {
+        setTrialInfo(explicitTrial);
+        setProgress(normalized);
+        setView("exam");
+      });
+
+      // Still fetch from remote to sync if needed, but don't overwrite trialInfo
+      const base = apiBaseUrl();
+      if (base && userId !== "local") {
+        isLoadingRemoteRef.current = true;
+        (async () => {
+          try {
+            const trialRes = await getTrial(qset.set_id, explicitTrial.trialId);
+            const remoteState = trialRes.state ?? emptyProgressState();
+            const localTime = new Date(normalized.updatedAt || 0).getTime();
+            const remoteTime = new Date(remoteState.updatedAt || 0).getTime();
+            if (remoteTime > localTime) {
+              setProgress(normalizeProgressForSet(qset, remoteState));
+            }
+          } catch {
+            // ignore
+          } finally {
+            isLoadingRemoteRef.current = false;
+          }
+        })();
+      }
+      return;
+    }
 
     // Check for local active trial first
     const localTrialInfo = loadActiveTrialInfo({ userId, setId: qset.set_id });
@@ -381,6 +420,8 @@ export function StudyApp() {
 
   function handleSetSelected(set: QuestionSet, existingTrialInfo?: TrialInfo) {
     window.sessionStorage.setItem(SESSION_LAST_QSET_JSON_KEY, JSON.stringify(set));
+    // Store explicit trial selection so useEffect doesn't overwrite it
+    explicitTrialSelectedRef.current = existingTrialInfo ?? null;
     setQset(set);
     if (existingTrialInfo) {
       setTrialInfo(existingTrialInfo);
@@ -663,7 +704,7 @@ export function StudyApp() {
                   onClick={onFinish}
                   className="h-11 shadow-md hover:shadow-lg transition-all"
                 >
-                  解答を終了する
+                  {isReadOnly ? "結果画面へ" : "解答を終了する"}
                 </Button>
               ) : (
                 <Button
