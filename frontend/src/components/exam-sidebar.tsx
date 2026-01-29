@@ -25,8 +25,7 @@ function formatTrialDate(isoString: string): string {
     const d = String(date.getDate()).padStart(2, "0");
     const hh = String(date.getHours()).padStart(2, "0");
     const mm = String(date.getMinutes()).padStart(2, "0");
-    const ss = String(date.getSeconds()).padStart(2, "0");
-    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+    return `${y}-${m}-${d} ${hh}:${mm}`;
   } catch {
     return isoString;
   }
