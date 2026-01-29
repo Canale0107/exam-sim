@@ -60,7 +60,7 @@ export function QuestionDisplay({
     totalQuestions > 0 ? Math.max(0, Math.min(100, (answeredQuestions / totalQuestions) * 100)) : 0;
   const positionPct =
     totalQuestions > 0
-      ? Math.max(0, Math.min(100, (questionNumber / totalQuestions) * 100))
+      ? Math.max(0, Math.min(100, ((questionNumber - 1) / totalQuestions) * 100))
       : 0;
 
   const handleChoiceClick = (choiceId: string) => {
