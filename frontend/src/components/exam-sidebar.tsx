@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { QuestionSet } from "@/lib/questionSet";
 import type { ProgressState } from "@/lib/progress";
-import { HomeIcon } from "@/components/icons";
+import { HomeIcon, BarChart2Icon } from "@/components/icons";
 
 interface ExamSidebarProps {
   questionSet: QuestionSet;
@@ -13,6 +13,7 @@ interface ExamSidebarProps {
   trialStartedAt: string | null;
   isReadOnly: boolean;
   onQuestionSelect: (index: number) => void;
+  onShowResults?: () => void;
   onBackToHome: () => void;
 }
 
@@ -38,6 +39,7 @@ export function ExamSidebar({
   trialStartedAt,
   isReadOnly,
   onQuestionSelect,
+  onShowResults,
   onBackToHome,
 }: ExamSidebarProps) {
   return (
@@ -93,7 +95,17 @@ export function ExamSidebar({
         </div>
       </ScrollArea>
 
-      <div className="border-t border-sidebar-border p-6 bg-sidebar-accent/30">
+      <div className="border-t border-sidebar-border p-6 bg-sidebar-accent/30 space-y-2.5">
+        {isReadOnly && onShowResults && (
+          <Button
+            variant="outline"
+            className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"
+            onClick={onShowResults}
+          >
+            <BarChart2Icon className="mr-2 h-4 w-4" />
+            結果画面へ
+          </Button>
+        )}
         <Button
           variant="outline"
           className="w-full h-10 bg-transparent hover:bg-sidebar-accent transition-all shadow-sm hover:shadow-md"

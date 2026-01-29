@@ -549,6 +549,7 @@ export function StudyApp() {
           trialStartedAt={trialInfo?.startedAt ?? null}
           isReadOnly={isReadOnly}
           onQuestionSelect={gotoIndex}
+          onShowResults={() => setView("results")}
           onBackToHome={onBackToHome}
         />
       </aside>
