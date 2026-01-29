@@ -133,6 +133,7 @@ export function ResultsScreen(props: {
   unansweredQuestions: number;
   accuracyRate: number;
   trialStartedAt: string | null;
+  trialCompletedAt: string | null;
   trialStatus: TrialStatus | null;
 }) {
   const segments: Segment[] = [
@@ -157,20 +158,23 @@ export function ResultsScreen(props: {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-8">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight">結果</h1>
-          {props.trialStartedAt !== null && (
-            <span className={`text-sm px-3 py-1 rounded-full ${
-              isCompleted
-                ? "bg-success/10 text-success"
-                : "bg-primary/10 text-primary"
-            }`}>
-              受験開始: {formatTrialDate(props.trialStartedAt)}
-              {isCompleted && " (完了)"}
+          {isCompleted && (
+            <span className="text-sm px-3 py-1 rounded-full bg-success/10 text-success">
+              完了
             </span>
           )}
         </div>
         <p className="mt-2 text-base text-muted-foreground">{props.title}</p>
+        {props.trialStartedAt !== null && (
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span>開始: {formatTrialDate(props.trialStartedAt)}</span>
+            {props.trialCompletedAt && (
+              <span>終了: {formatTrialDate(props.trialCompletedAt)}</span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-5 sm:grid-cols-3 mb-8">

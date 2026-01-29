@@ -43,6 +43,7 @@ type TrialInfo = {
   trialNumber: number; // kept for internal use
   status: TrialStatus;
   startedAt: string;
+  completedAt: string | null;
 };
 
 function clamp(n: number, min: number, max: number): number {
@@ -232,6 +233,7 @@ export function StudyApp() {
           trialNumber: localTrialInfo.trialNumber,
           status: localTrialInfo.status,
           startedAt: localTrialInfo.startedAt,
+          completedAt: null,
         });
         setProgress(normalized);
         setView("exam");
@@ -285,6 +287,7 @@ export function StudyApp() {
             trialNumber: trialRes.trialNumber,
             status: trialRes.status,
             startedAt: trialRes.startedAt,
+            completedAt: trialRes.completedAt ?? null,
           });
           setProgress(normalizeProgressForSet(qset, merged));
 
@@ -336,6 +339,7 @@ export function StudyApp() {
             trialNumber: remote.trialNumber ?? 1,
             status: remote.trialStatus ?? "in_progress",
             startedAt: (remote as { startedAt?: string }).startedAt ?? new Date().toISOString(),
+            completedAt: (remote as { completedAt?: string | null }).completedAt ?? null,
           });
         }
 
@@ -538,7 +542,7 @@ export function StudyApp() {
 
       // Update local state
       saveActiveTrialInfo({ userId, setId: qset.set_id, info: null });
-      setTrialInfo({ ...trialInfo, status: "completed" });
+      setTrialInfo({ ...trialInfo, status: "completed", completedAt: new Date().toISOString() });
     }
 
     setView("results");
@@ -668,6 +672,7 @@ export function StudyApp() {
               unansweredQuestions={unansweredQuestions}
               accuracyRate={accuracyRate}
               trialStartedAt={trialInfo?.startedAt ?? null}
+              trialCompletedAt={trialInfo?.completedAt ?? null}
               trialStatus={trialInfo?.status ?? null}
             />
           )}

@@ -33,6 +33,7 @@ type TrialInfo = {
   trialNumber: number;
   status: TrialStatus;
   startedAt: string;
+  completedAt: string | null;
 };
 
 interface QuestionSetGridProps {
@@ -385,6 +386,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       trialNumber: trial.trialNumber,
       status: trial.status,
       startedAt: trial.startedAt,
+      completedAt: trial.completedAt ?? null,
     };
     onSetSelected(selectedSetQuestionSet, trialInfo);
     closeTrialModal();
@@ -403,6 +405,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
         trialNumber: res.trialNumber,
         status: "in_progress",
         startedAt: res.startedAt,
+        completedAt: null,
       };
       onSetSelected(selectedSetQuestionSet, trialInfo);
       closeTrialModal();
