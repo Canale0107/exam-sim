@@ -29,7 +29,7 @@ import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
 import { ResultsScreen } from "@/app/_components/ResultsScreen";
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon, SkipForwardIcon } from "@/components/icons";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 const SESSION_LAST_QSET_JSON_KEY = "exam-sim:lastQuestionSetJson";
 
@@ -433,14 +433,6 @@ export function StudyApp() {
     setView("exam");
   }
 
-  function gotoFirstUnanswered() {
-    if (!qset) return;
-    const idx = qset.questions.findIndex(
-      (q) => !hasAnswered(progress.attemptsByQuestionId[q.id])
-    );
-    if (idx >= 0) gotoIndex(idx);
-  }
-
   function onToggleFlagged(flagged: boolean) {
     if (!current || isReadOnly) return;
     setProgress((prev) => upsertAttempt(prev, current.question.id, { flagged }));
@@ -646,15 +638,6 @@ export function StudyApp() {
               >
                 <ChevronLeftIcon className="mr-2 h-4 w-4" />
                 前の問題
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={gotoFirstUnanswered}
-                className="h-11 shadow-sm hover:shadow-md transition-all"
-              >
-                <SkipForwardIcon className="mr-2 h-4 w-4" />
-                未回答へ
               </Button>
 
               {isLastQuestion ? (
