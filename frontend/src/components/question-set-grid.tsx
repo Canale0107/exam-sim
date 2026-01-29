@@ -20,6 +20,7 @@ import {
   TrashIcon,
   PlusCircleIcon,
   MoreVerticalIcon,
+  UserIcon,
 } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -548,8 +549,12 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
             <div className="text-sm text-muted-foreground hidden sm:block">
               {userEmail ? `ログイン中: ${userEmail}` : "ゲスト（未ログイン）"}
             </div>
-            <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              アカウント
+            <Link
+              href="/auth"
+              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="アカウント"
+            >
+              <UserIcon className="h-5 w-5" />
             </Link>
           </div>
         </div>

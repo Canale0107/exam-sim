@@ -31,7 +31,7 @@ import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
 import { ResultsScreen } from "@/app/_components/ResultsScreen";
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon, MenuIcon, XIcon } from "@/components/icons";
+import { ChevronLeftIcon, ChevronRightIcon, MenuIcon, XIcon, UserIcon } from "@/components/icons";
 
 const SESSION_LAST_QSET_JSON_KEY = "exam-sim:lastQuestionSetJson";
 const SAMPLE_SET_ID = "sample-set";
@@ -618,8 +618,12 @@ export function StudyApp() {
               {authUser ? `ログイン中: ${authUser.email ?? authUser.id}` : "ゲスト（未ログイン）"}
             </div>
             <div className="flex-1 lg:hidden" />
-            <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              アカウント
+            <Link
+              href="/auth"
+              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="アカウント"
+            >
+              <UserIcon className="h-5 w-5" />
             </Link>
           </div>
         </div>
