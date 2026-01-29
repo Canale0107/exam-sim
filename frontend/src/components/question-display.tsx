@@ -13,6 +13,8 @@ import {
   ChevronUpIcon,
   FlagIcon,
   PencilIcon,
+  CopyIcon,
+  CheckIcon,
 } from "@/components/icons";
 import { useState } from "react";
 
@@ -53,6 +55,7 @@ export function QuestionDisplay({
   const [showExplanation, setShowExplanation] = useState(false);
   const [isNoteEditing, setIsNoteEditing] = useState(false);
   const [noteDraft, setNoteDraft] = useState<string>("");
+  const [isCopied, setIsCopied] = useState(false);
 
   // Reset state when question changes
   const questionId = question.id;
@@ -63,6 +66,7 @@ export function QuestionDisplay({
     setShowExplanation(false);
     setIsNoteEditing(false);
     setNoteDraft("");
+    setIsCopied(false);
   }
 
   const isAnswered = (attempt?.selectedChoiceIds?.length ?? 0) > 0;
@@ -120,6 +124,30 @@ export function QuestionDisplay({
     setNoteDraft("");
   };
 
+  const copyQuestionToClipboard = async () => {
+    const choicesText = question.choices
+      .map((choice) => `${choice.id}. ${choice.text}`)
+      .join("\n");
+    const multiSelectNote = isMultiple ? "\n（複数選択）" : "";
+    const formattedText = `## 問題${multiSelectNote}\n${question.text}\n\n## 選択肢\n${choicesText}`;
+
+    try {
+      await navigator.clipboard.writeText(formattedText);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = formattedText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Sticky header (stays visible while scrolling long question text) */}
@@ -136,6 +164,19 @@ export function QuestionDisplay({
             )}
           </div>
           <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={copyQuestionToClipboard}
+              className={`h-8 w-8 transition-colors ${isCopied ? "text-success hover:text-success/80" : "text-muted-foreground hover:text-primary"}`}
+              aria-label="問題をコピー"
+            >
+              {isCopied ? (
+                <CheckIcon className="h-4 w-4" />
+              ) : (
+                <CopyIcon className="h-4 w-4" />
+              )}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
