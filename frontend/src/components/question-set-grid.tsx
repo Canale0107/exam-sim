@@ -19,6 +19,7 @@ import {
   TrendingUpIcon,
   TrashIcon,
   PlusCircleIcon,
+  MoreVerticalIcon,
 } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -118,6 +119,7 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
   const [trialModalActiveId, setTrialModalActiveId] = useState<string | null>(null);
   const [deletingTrialId, setDeletingTrialId] = useState<string | null>(null);
   const [creatingTrial, setCreatingTrial] = useState<boolean>(false);
+  const [openMenuSetId, setOpenMenuSetId] = useState<string | null>(null);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -126,6 +128,14 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
       setIsLoggedIn(isCognitoConfigured() && user !== null);
     });
   }, []);
+
+  // Close dropdown menu when clicking outside
+  useEffect(() => {
+    if (!openMenuSetId) return;
+    const handleClickOutside = () => setOpenMenuSetId(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [openMenuSetId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -632,20 +642,42 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
                     className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 group relative"
                     onClick={() => openTrialModal(item.setId)}
                   >
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-3 top-3 h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        deleteQuestionSetFromCloud(item.setId);
-                      }}
-                      aria-label={`delete ${item.setId}`}
-                    >
-                      <XCircleIcon className="h-4 w-4" />
-                    </Button>
+                    <div className="absolute right-3 top-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpenMenuSetId(openMenuSetId === item.setId ? null : item.setId);
+                        }}
+                        aria-label={`メニューを開く`}
+                      >
+                        <MoreVerticalIcon className="h-4 w-4" />
+                      </Button>
+                      {openMenuSetId === item.setId && (
+                        <div
+                          className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-md border bg-popover p-1 shadow-md"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setOpenMenuSetId(null);
+                              deleteQuestionSetFromCloud(item.setId);
+                            }}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                            問題集を削除
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <CardHeader className="pb-3 pr-12">
                       <CardTitle className="flex items-center gap-3 truncate text-base">
                         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
