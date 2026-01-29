@@ -31,7 +31,7 @@ import { ExamSidebar } from "@/components/exam-sidebar";
 import { QuestionDisplay } from "@/components/question-display";
 import { ResultsScreen } from "@/app/_components/ResultsScreen";
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { ChevronLeftIcon, ChevronRightIcon, MenuIcon, XIcon } from "@/components/icons";
 
 const SESSION_LAST_QSET_JSON_KEY = "exam-sim:lastQuestionSetJson";
 const SAMPLE_SET_ID = "sample-set";
@@ -117,6 +117,9 @@ export function StudyApp() {
   // Trial state
   const [trialInfo, setTrialInfo] = useState<TrialInfo | null>(null);
   const isReadOnly = trialInfo?.status === "completed";
+
+  // Mobile sidebar state
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const userId = authUser?.id ?? "local";
 
@@ -419,6 +422,7 @@ export function StudyApp() {
     if (!qset) return;
     setProgress((prev) => ({ ...prev, currentIndex: clamp(nextIndex, 0, qset.questions.length - 1) }));
     setView("exam");
+    setMobileSidebarOpen(false);
   }
 
   function onToggleFlagged(flagged: boolean) {
@@ -542,7 +546,7 @@ export function StudyApp() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <aside className="hidden w-80 border-r border-sidebar-border lg:block shadow-sm">
         <ExamSidebar
           questionSet={qset}
@@ -556,13 +560,58 @@ export function StudyApp() {
         />
       </aside>
 
+      {/* Mobile Sidebar Overlay */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          {/* Sidebar Drawer */}
+          <aside className="absolute left-0 top-0 h-full w-80 max-w-[85vw] shadow-xl">
+            <div className="relative h-full">
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(false)}
+                className="absolute right-3 top-3 z-10 rounded-full p-2 text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                aria-label="メニューを閉じる"
+              >
+                <XIcon className="h-5 w-5" />
+              </button>
+              <ExamSidebar
+                questionSet={qset}
+                progress={progress}
+                currentQuestionIndex={view === "results" ? -1 : current.index}
+                trialStartedAt={trialInfo?.startedAt ?? null}
+                isReadOnly={isReadOnly}
+                onQuestionSelect={gotoIndex}
+                onShowResults={() => { setView("results"); setMobileSidebarOpen(false); }}
+                onBackToHome={onBackToHome}
+              />
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex flex-1 flex-col overflow-hidden">
         <div className="border-b border-border bg-card shadow-sm">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-4">
-            <div className="truncate text-sm text-muted-foreground">
+            {/* Mobile menu button */}
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
+              aria-label="メニューを開く"
+            >
+              <MenuIcon className="h-5 w-5" />
+            </button>
+            <div className="hidden truncate text-sm text-muted-foreground lg:block">
               {authUser ? `ログイン中: ${authUser.email ?? authUser.id}` : "ゲスト（未ログイン）"}
             </div>
+            <div className="flex-1 lg:hidden" />
             <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               アカウント
             </Link>
