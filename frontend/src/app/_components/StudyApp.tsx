@@ -561,39 +561,45 @@ export function StudyApp() {
       </aside>
 
       {/* Mobile Sidebar Overlay */}
-      {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          {/* Sidebar Drawer */}
-          <aside className="absolute left-0 top-0 h-full w-80 max-w-[85vw] shadow-xl">
-            <div className="relative h-full">
-              {/* Close button */}
-              <button
-                type="button"
-                onClick={() => setMobileSidebarOpen(false)}
-                className="absolute right-3 top-3 z-10 rounded-full p-2 text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                aria-label="メニューを閉じる"
-              >
-                <XIcon className="h-5 w-5" />
-              </button>
-              <ExamSidebar
-                questionSet={qset}
-                progress={progress}
-                currentQuestionIndex={view === "results" ? -1 : current.index}
-                trialStartedAt={trialInfo?.startedAt ?? null}
-                isReadOnly={isReadOnly}
-                onQuestionSelect={gotoIndex}
-                onShowResults={() => { setView("results"); setMobileSidebarOpen(false); }}
-                onBackToHome={onBackToHome}
-              />
-            </div>
-          </aside>
-        </div>
-      )}
+      <div
+        className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${
+          mobileSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+        {/* Sidebar Drawer */}
+        <aside
+          className={`absolute left-0 top-0 h-full w-80 max-w-[85vw] shadow-xl transition-transform duration-300 ease-out ${
+            mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="relative h-full">
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(false)}
+              className="absolute right-3 top-3 z-10 rounded-full p-2 text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+              aria-label="メニューを閉じる"
+            >
+              <XIcon className="h-5 w-5" />
+            </button>
+            <ExamSidebar
+              questionSet={qset}
+              progress={progress}
+              currentQuestionIndex={view === "results" ? -1 : current.index}
+              trialStartedAt={trialInfo?.startedAt ?? null}
+              isReadOnly={isReadOnly}
+              onQuestionSelect={gotoIndex}
+              onShowResults={() => { setView("results"); setMobileSidebarOpen(false); }}
+              onBackToHome={onBackToHome}
+            />
+          </div>
+        </aside>
+      </div>
 
       {/* Main Content */}
       <main className="flex flex-1 flex-col overflow-hidden">
