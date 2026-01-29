@@ -42,21 +42,6 @@ type TrialInfo = {
   startedAt: string;
 };
 
-function formatTrialDate(isoString: string): string {
-  try {
-    const date = new Date(isoString);
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    const hh = String(date.getHours()).padStart(2, "0");
-    const mm = String(date.getMinutes()).padStart(2, "0");
-    const ss = String(date.getSeconds()).padStart(2, "0");
-    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
-  } catch {
-    return isoString;
-  }
-}
-
 function clamp(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
   return Math.max(min, Math.min(max, n));
@@ -558,20 +543,8 @@ export function StudyApp() {
       <main className="flex flex-1 flex-col overflow-hidden">
         <div className="border-b border-border bg-card shadow-sm">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-4">
-            <div className="min-w-0 flex items-center gap-3">
-              <div className="truncate text-sm text-muted-foreground">
-                {authUser ? `ログイン中: ${authUser.email ?? authUser.id}` : "ゲスト（未ログイン）"}
-              </div>
-              {trialInfo && (
-                <div className={`text-xs px-2 py-1 rounded-full ${
-                  trialInfo.status === "completed"
-                    ? "bg-success/10 text-success"
-                    : "bg-primary/10 text-primary"
-                }`}>
-                  受験開始: {formatTrialDate(trialInfo.startedAt)}
-                  {trialInfo.status === "completed" && " (閲覧のみ)"}
-                </div>
-              )}
+            <div className="truncate text-sm text-muted-foreground">
+              {authUser ? `ログイン中: ${authUser.email ?? authUser.id}` : "ゲスト（未ログイン）"}
             </div>
             <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               アカウント
