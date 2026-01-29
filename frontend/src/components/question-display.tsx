@@ -121,84 +121,84 @@ export function QuestionDisplay({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* Sticky header (stays visible while scrolling long question text) */}
-      <div className="sticky top-0 z-10 -mx-6 border-b border-border bg-background/95 px-6 py-5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
+      <div className="sticky top-0 z-10 -mx-6 border-b border-border bg-background/95 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
               問題 {questionNumber} / {totalQuestions}
             </span>
             {isMultiple && (
-              <span className="rounded-lg bg-warning/10 px-3 py-1.5 text-sm font-semibold text-warning">
+              <span className="rounded-md bg-warning/10 px-2 py-1 text-xs font-semibold text-warning">
                 複数選択
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => onFlagToggle(!attempt?.flagged)}
-              className={`transition-colors ${attempt?.flagged ? "text-warning hover:text-warning/80" : "hover:text-warning"}`}
+              className={`h-8 w-8 transition-colors ${attempt?.flagged ? "text-warning hover:text-warning/80" : "hover:text-warning"}`}
               aria-label={attempt?.flagged ? "フラグを解除" : "フラグを設定"}
             >
-              <FlagIcon className={`h-5 w-5 transition-transform ${attempt?.flagged ? "fill-current scale-110" : ""}`} />
+              <FlagIcon className={`h-4 w-4 transition-transform ${attempt?.flagged ? "fill-current scale-110" : ""}`} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={openNoteEditor}
-              className={`transition-colors ${hasSavedNote ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}`}
+              className={`h-8 w-8 transition-colors ${hasSavedNote ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}`}
               aria-label="メモを編集"
             >
-              <PencilIcon className="h-5 w-5" />
+              <PencilIcon className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-muted">
-              <div 
-                className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out" 
-                style={{ width: `${progressPct}%` }} 
+        <div className="mt-2 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out"
+                style={{ width: `${progressPct}%` }}
               />
               {/* Current position marker */}
               <div
-                className="pointer-events-none absolute top-1/2 h-5 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/60 shadow-sm transition-[left] duration-300 ease-out"
+                className="pointer-events-none absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/60 shadow-sm transition-[left] duration-300 ease-out"
                 style={{ left: `${positionPct}%` }}
                 aria-hidden="true"
               />
             </div>
-            <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+            <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">
               {answeredQuestions}/{totalQuestions}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-success" />
-              <span className="text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="flex items-center gap-1">
+              <div className="h-1.5 w-1.5 rounded-full bg-success" />
+              <span className="text-[10px] text-muted-foreground">
                 正解 <span className="font-semibold text-success">{correctAnswers}</span>
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-destructive" />
-              <span className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <div className="h-1.5 w-1.5 rounded-full bg-destructive" />
+              <span className="text-[10px] text-muted-foreground">
                 不正解 <span className="font-semibold text-destructive">{incorrectAnswers}</span>
               </span>
             </div>
             {unknownAnswers > 0 && (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 rounded-full bg-warning" />
-                <span className="text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="h-1.5 w-1.5 rounded-full bg-warning" />
+                <span className="text-[10px] text-muted-foreground">
                   正誤不明 <span className="font-semibold text-warning">{unknownAnswers}</span>
                 </span>
               </div>
             )}
-            <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-primary" />
-              <span className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <span className="text-[10px] text-muted-foreground">
                 正答率 <span className="font-semibold text-primary">{accuracyRate}%</span>
               </span>
             </div>
@@ -242,11 +242,11 @@ export function QuestionDisplay({
             <p className="mt-2 text-xs text-muted-foreground">Ctrl+Enter / Cmd+Enter で保存</p>
           </Card>
         )}
-        <h2 className="whitespace-pre-wrap text-xl font-semibold leading-relaxed tracking-tight">{question.text}</h2>
+        <h2 className="whitespace-pre-wrap text-base font-semibold leading-relaxed tracking-tight">{question.text}</h2>
       </div>
 
       {/* Choices */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {question.choices.map((choice) => {
           const status = getChoiceStatus(choice.id);
           const isSelected = selectedChoiceIds.includes(choice.id);
@@ -257,7 +257,7 @@ export function QuestionDisplay({
               type="button"
               onClick={() => handleChoiceClick(choice.id)}
               disabled={isAnswered || isReadOnly}
-              className={`group relative w-full rounded-xl border-2 p-5 text-left ${isAnswered || isReadOnly ? "" : "transition-all duration-200"} ${
+              className={`group relative w-full rounded-xl border-2 p-4 text-left ${isAnswered || isReadOnly ? "" : "transition-all duration-200"} ${
                 status === "correct"
                   ? "border-success bg-success/10 shadow-sm shadow-success/20"
                   : status === "incorrect"
@@ -288,8 +288,8 @@ export function QuestionDisplay({
                   {status === "incorrect" && <XCircleIcon className="h-4 w-4 text-white" />}
                 </div>
                 <span className="flex-1 leading-relaxed">
-                  <span className="font-bold text-base">{choice.id}.</span>{" "}
-                  <span className="text-base">{choice.text}</span>
+                  <span className="font-bold text-sm">{choice.id}.</span>{" "}
+                  <span className="text-sm">{choice.text}</span>
                 </span>
               </div>
             </button>
