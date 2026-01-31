@@ -7,6 +7,7 @@ locals {
     [for o in var.callback_urls : trimsuffix(o, "/")],
     ["http://localhost:3000"],
     local.amplify_origins,
+    local.custom_origins,
   ))
 }
 

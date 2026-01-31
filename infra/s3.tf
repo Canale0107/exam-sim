@@ -29,6 +29,7 @@ resource "aws_s3_bucket_cors_configuration" "question_sets" {
     allowed_origins = distinct(concat(
       [for o in var.callback_urls : trimsuffix(o, "/")],
       local.amplify_origins,
+      local.custom_origins,
     ))
     allowed_headers = ["*"]
     expose_headers  = ["ETag"]

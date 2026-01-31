@@ -33,8 +33,8 @@ resource "aws_cognito_user_pool_client" "web" {
   allowed_oauth_flows                  = ["code"]
   allowed_oauth_scopes                 = ["email", "openid", "profile"]
 
-  callback_urls = distinct(concat(var.callback_urls, local.amplify_urls))
-  logout_urls   = distinct(concat(var.logout_urls, local.amplify_urls))
+  callback_urls = distinct(concat(var.callback_urls, local.amplify_urls, local.custom_urls))
+  logout_urls   = distinct(concat(var.logout_urls, local.amplify_urls, local.custom_urls))
 
   supported_identity_providers = ["COGNITO"]
 

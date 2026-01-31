@@ -22,6 +22,12 @@ variable "amplify_domain" {
   default     = ""
 }
 
+variable "custom_domain" {
+  type        = string
+  description = "Custom domain for the app (e.g. exam-sim.kanare.dev). Leave empty to skip."
+  default     = ""
+}
+
 variable "callback_urls" {
   type        = list(string)
   description = "Allowed OAuth callback URLs for Cognito hosted UI."
