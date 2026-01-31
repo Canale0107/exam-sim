@@ -16,6 +16,12 @@ variable "cognito_domain_prefix" {
   default     = "exam-sim"
 }
 
+variable "amplify_domain" {
+  type        = string
+  description = "Amplify app default domain (e.g. d1abc2def3.amplifyapp.com). Set after creating the app in Amplify Console."
+  default     = ""
+}
+
 variable "callback_urls" {
   type        = list(string)
   description = "Allowed OAuth callback URLs for Cognito hosted UI."

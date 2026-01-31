@@ -42,8 +42,12 @@ output "s3_question_sets_bucket" {
   value = aws_s3_bucket.question_sets.bucket
 }
 
-output "amplify_app_url" {
-  value       = "${local.amplify_branch_url}/"
-  description = "Amplify Hosting frontend URL"
+output "amplify_env_vars" {
+  description = "Environment variables to set in Amplify Console"
+  value = {
+    NEXT_PUBLIC_COGNITO_DOMAIN    = "${aws_cognito_user_pool_domain.this.domain}.auth.${var.region}.amazoncognito.com"
+    NEXT_PUBLIC_COGNITO_CLIENT_ID = aws_cognito_user_pool_client.web.id
+    NEXT_PUBLIC_API_BASE_URL      = aws_apigatewayv2_api.http.api_endpoint
+  }
 }
 
