@@ -42,3 +42,8 @@ output "s3_question_sets_bucket" {
   value = aws_s3_bucket.question_sets.bucket
 }
 
+output "amplify_app_url" {
+  value       = "${local.amplify_branch_url}/"
+  description = "Amplify Hosting frontend URL"
+}
+

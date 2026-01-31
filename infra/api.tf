@@ -6,6 +6,7 @@ locals {
   cors_origins = distinct(concat(
     [for o in var.callback_urls : trimsuffix(o, "/")],
     ["http://localhost:3000"],
+    [local.amplify_branch_url],
   ))
 }
 
