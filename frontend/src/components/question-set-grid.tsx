@@ -38,6 +38,7 @@ type TrialInfo = {
 
 interface QuestionSetGridProps {
   onSetSelected: (set: QuestionSet, trialInfo?: TrialInfo) => void;
+  authUser?: { id: string; email: string | null } | null;
 }
 
 interface CloudQuestionSet {
@@ -96,7 +97,7 @@ function SummaryBadges({ summary }: { summary: TrialSummary | null }) {
   );
 }
 
-export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
+export function QuestionSetGrid({ onSetSelected, authUser }: QuestionSetGridProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -124,12 +125,19 @@ export function QuestionSetGrid({ onSetSelected }: QuestionSetGridProps) {
   const [openMenuSetId, setOpenMenuSetId] = useState<string | null>(null);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      const user = getCurrentUser();
-      setUserEmail(user?.email ?? null);
-      setIsLoggedIn(isCognitoConfigured() && user !== null);
-    });
-  }, []);
+    if (authUser !== undefined) {
+      // Derive from prop passed by parent (keeps in sync after token exchange)
+      setUserEmail(authUser?.email ?? null);
+      setIsLoggedIn(isCognitoConfigured() && authUser !== null);
+    } else {
+      // Fallback: read from localStorage (standalone usage)
+      queueMicrotask(() => {
+        const user = getCurrentUser();
+        setUserEmail(user?.email ?? null);
+        setIsLoggedIn(isCognitoConfigured() && user !== null);
+      });
+    }
+  }, [authUser]);
 
   // Close dropdown menu when clicking outside
   useEffect(() => {

@@ -480,7 +480,7 @@ export function StudyApp() {
 
 
   if (!qset) {
-    return <QuestionSetGrid onSetSelected={handleSetSelected} />;
+    return <QuestionSetGrid onSetSelected={handleSetSelected} authUser={authUser} />;
   }
 
   if (!current) {
